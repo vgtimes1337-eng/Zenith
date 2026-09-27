@@ -1,6 +1,5 @@
 -- ============================================================
 -- ZENITH EMPIRE | By ALTRON
--- Полное чит-меню для Roblox с поддержкой ПК и Телефона
 -- ============================================================
 
 if _G.ZenithEmpireLoaded then warn("[Zenith Empire] Уже загружено") return end
@@ -19,7 +18,6 @@ local VirtualUser      = game:GetService("VirtualUser")
 local LocalPlayer      = Players.LocalPlayer
 local Camera           = workspace.CurrentCamera
 
--- ═══════════════════ THEME ═══════════════════
 local Theme = {
     Bg=Color3.fromRGB(12,12,14), Bg2=Color3.fromRGB(18,18,21),
     Panel=Color3.fromRGB(22,22,26), Element=Color3.fromRGB(30,30,35),
@@ -87,6 +85,7 @@ CFG.Cheats = CFG.Cheats or {
     GravityEnabled=false, Gravity=196.2,
     FreezePlayer=false, WalkOnWater=false, NoFallDamage=false,
     ServerHopKeybind=Enum.KeyCode.H,
+    FlingEnabled=false, FlingTargetMode="Nearest", FlingKeybind=Enum.KeyCode.G,
 }
 
 CFG.Char = CFG.Char or {}
@@ -113,7 +112,6 @@ ensure(CFG.Char, "Wings",     {Enabled=false, Color=Color3.fromRGB(255,255,255),
 if _G.ZenithEmpireGUI then pcall(function() _G.ZenithEmpireGUI:Destroy() end) end
 if _G.ZenithEmpireNotifGui then pcall(function() _G.ZenithEmpireNotifGui:Destroy() end) end
 
--- ═══════════════════ UTILS ═══════════════════
 local function Create(c, p, ch)
     local o = Instance.new(c)
     for k, v in pairs(p or {}) do if k ~= "Parent" then o[k] = v end end
@@ -141,7 +139,10 @@ local function PlaySound(id, vol)
 end
 local function Click() PlaySound(CFG.UI.ClickSound, 0.3) end
 
--- ═══════════════════ CONFIG SYSTEM ═══════════════════
+function _G.ZenithAccent()
+    return CFG.UI.Accent or Color3.fromRGB(255,255,255)
+end
+
 local CONFIG_FOLDER = "ZenithEmpire"
 local CONFIG_INDEX = CONFIG_FOLDER .. "/index.json"
 local MAX_SLOTS = 15
@@ -269,7 +270,6 @@ local function RenameConfig(old, new)
     return true, "Переименовано: " .. old .. " → " .. new
 end
 
--- ═══════════════════ GUI ROOT ═══════════════════
 local gui = Create("ScreenGui", {
     Name="ZenithEmpire", ResetOnSpawn=false, IgnoreGuiInset=true,
     ZIndexBehavior=Enum.ZIndexBehavior.Sibling, DisplayOrder=999,
@@ -319,7 +319,6 @@ local function Notify(text, color)
     end)
 end
 
--- ═══════════════════ PLATFORM SELECTOR ═══════════════════
 local function DetectMobile()
     local ok, result = pcall(function()
         return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -341,7 +340,7 @@ local PFrame = Create("Frame", {
 })
 
 local PCenter = Create("Frame", {
-    Size=UDim2.new(0,460,0,280), Position=UDim2.new(0.5,0,0.5,0),
+    Size=UDim2.new(0,520,0,340), Position=UDim2.new(0.5,0,0.5,0),
     AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Bg2,
     BorderSizePixel=0, Parent=PFrame
 })
@@ -349,93 +348,116 @@ Corner(PCenter, 16)
 Stroke(PCenter, Theme.StrokeHov, 1.5)
 
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,36), Position=UDim2.new(0,0,0,26),
+    Size=UDim2.new(1,0,0,36), Position=UDim2.new(0,0,0,32),
     BackgroundTransparency=1, Text="ZENITH EMPIRE",
-    TextColor3=Theme.Text, Font=Enum.Font.GothamBlack, TextSize=26,
-    Parent=PCenter
+    TextColor3=Theme.Text, Font=Enum.Font.GothamBlack, TextSize=28,
+    TextXAlignment=Enum.TextXAlignment.Center, Parent=PCenter
 })
-
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,20), Position=UDim2.new(0,0,0,64),
+    Size=UDim2.new(1,0,0,20), Position=UDim2.new(0,0,0,74),
     BackgroundTransparency=1, Text="Выберите платформу",
-    TextColor3=Theme.TextDim, Font=Enum.Font.Gotham, TextSize=13,
-    Parent=PCenter
+    TextColor3=Theme.TextDim, Font=Enum.Font.Gotham, TextSize=14,
+    TextXAlignment=Enum.TextXAlignment.Center, Parent=PCenter
 })
-
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,20), Position=UDim2.new(0,0,0,86),
+    Size=UDim2.new(1,0,0,16), Position=UDim2.new(0,0,0,98),
     BackgroundTransparency=1, Text="Можно изменить позже в настройках",
     TextColor3=Theme.TextMuted, Font=Enum.Font.Gotham, TextSize=11,
-    Parent=PCenter
+    TextXAlignment=Enum.TextXAlignment.Center, Parent=PCenter
+})
+
+local buttonRow = Create("Frame", {
+    Size=UDim2.new(0,460,0,140), Position=UDim2.new(0.5,0,0,130),
+    AnchorPoint=Vector2.new(0.5,0), BackgroundTransparency=1, Parent=PCenter
+})
+Create("UIListLayout", {
+    FillDirection=Enum.FillDirection.Horizontal,
+    HorizontalAlignment=Enum.HorizontalAlignment.Center,
+    VerticalAlignment=Enum.VerticalAlignment.Center,
+    Padding=UDim.new(0,20), Parent=buttonRow
 })
 
 local PCButton = Create("TextButton", {
-    Size=UDim2.new(0,200,0,120), Position=UDim2.new(0.5,-210,0.5,-40),
-    AnchorPoint=Vector2.new(0,0),
-    BackgroundColor3=Theme.Element, Text="", AutoButtonColor=false, Parent=PCenter
+    Size=UDim2.new(0,220,0,140),
+    BackgroundColor3=Theme.Element, Text="", AutoButtonColor=false, Parent=buttonRow
 })
 Corner(PCButton, 12)
 local PCStroke = Stroke(PCButton, Theme.Stroke, 1.2)
+
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,40), Position=UDim2.new(0,0,0,22),
+    Size=UDim2.new(1,0,0,40), Position=UDim2.new(0,0,0,20),
     BackgroundTransparency=1, Text="ПК", TextColor3=Theme.Text,
-    Font=Enum.Font.GothamBlack, TextSize=28, Parent=PCButton
+    Font=Enum.Font.GothamBlack, TextSize=32, Parent=PCButton
 })
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,20), Position=UDim2.new(0,0,0,66),
+    Size=UDim2.new(1,-10,0,20), Position=UDim2.new(0,5,0,64),
     BackgroundTransparency=1, Text="Клавиатура, мышь",
-    TextColor3=Theme.TextDim, Font=Enum.Font.Gotham, TextSize=11, Parent=PCButton
+    TextColor3=Theme.TextDim, Font=Enum.Font.Gotham, TextSize=11,
+    TextXAlignment=Enum.TextXAlignment.Center, Parent=PCButton
 })
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,16), Position=UDim2.new(0,0,0,86),
-    BackgroundTransparency=1, Text="RightShift, keybinds",
-    TextColor3=Theme.TextMuted, Font=Enum.Font.Gotham, TextSize=10, Parent=PCButton
+    Size=UDim2.new(1,-10,0,16), Position=UDim2.new(0,5,0,88),
+    BackgroundTransparency=1, Text="RightShift · keybinds",
+    TextColor3=Theme.TextMuted, Font=Enum.Font.Gotham, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Center, Parent=PCButton
 })
 
 local MobileButton = Create("TextButton", {
-    Size=UDim2.new(0,200,0,120), Position=UDim2.new(0.5,10,0.5,-40),
-    AnchorPoint=Vector2.new(0,0),
-    BackgroundColor3=Theme.Element, Text="", AutoButtonColor=false, Parent=PCenter
+    Size=UDim2.new(0,220,0,140),
+    BackgroundColor3=Theme.Element, Text="", AutoButtonColor=false, Parent=buttonRow
 })
 Corner(MobileButton, 12)
 local MobileStroke = Stroke(MobileButton, Theme.Stroke, 1.2)
+
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,40), Position=UDim2.new(0,0,0,22),
+    Size=UDim2.new(1,0,0,40), Position=UDim2.new(0,0,0,20),
     BackgroundTransparency=1, Text="ТЕЛЕФОН", TextColor3=Theme.Text,
-    Font=Enum.Font.GothamBlack, TextSize=22, Parent=MobileButton
+    Font=Enum.Font.GothamBlack, TextSize=24, Parent=MobileButton
 })
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,20), Position=UDim2.new(0,0,0,66),
+    Size=UDim2.new(1,-10,0,20), Position=UDim2.new(0,5,0,64),
     BackgroundTransparency=1, Text="Тачскрин",
-    TextColor3=Theme.TextDim, Font=Enum.Font.Gotham, TextSize=11, Parent=MobileButton
+    TextColor3=Theme.TextDim, Font=Enum.Font.Gotham, TextSize=11,
+    TextXAlignment=Enum.TextXAlignment.Center, Parent=MobileButton
 })
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,16), Position=UDim2.new(0,0,0,86),
+    Size=UDim2.new(1,-10,0,16), Position=UDim2.new(0,5,0,88),
     BackgroundTransparency=1, Text="Кнопки на экране",
-    TextColor3=Theme.TextMuted, Font=Enum.Font.Gotham, TextSize=10, Parent=MobileButton
+    TextColor3=Theme.TextMuted, Font=Enum.Font.Gotham, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Center, Parent=MobileButton
 })
 
-local function hoverBtn(btn, str)
-    btn.MouseEnter:Connect(function()
-        Tween(btn, 0.15, {BackgroundColor3=Theme.ElementHov})
-        Tween(str, 0.15, {Color=Theme.StrokeHov})
-    end)
-    btn.MouseLeave:Connect(function()
-        Tween(btn, 0.15, {BackgroundColor3=Theme.Element})
-        Tween(str, 0.15, {Color=Theme.Stroke})
-    end)
-end
-hoverBtn(PCButton, PCStroke)
-hoverBtn(MobileButton, MobileStroke)
+PCButton.MouseEnter:Connect(function()
+    Tween(PCButton, 0.15, {BackgroundColor3=Theme.ElementHov})
+    Tween(PCStroke, 0.15, {Color=Theme.StrokeHov})
+end)
+PCButton.MouseLeave:Connect(function()
+    Tween(PCButton, 0.15, {BackgroundColor3=Theme.Element})
+    Tween(PCStroke, 0.15, {Color=Theme.Stroke})
+end)
+MobileButton.MouseEnter:Connect(function()
+    Tween(MobileButton, 0.15, {BackgroundColor3=Theme.ElementHov})
+    Tween(MobileStroke, 0.15, {Color=Theme.StrokeHov})
+end)
+MobileButton.MouseLeave:Connect(function()
+    Tween(MobileButton, 0.15, {BackgroundColor3=Theme.Element})
+    Tween(MobileStroke, 0.15, {Color=Theme.Stroke})
+end)
 
 local autoDetected = DetectMobile()
 Create("TextLabel", {
-    Size=UDim2.new(1,0,0,20), Position=UDim2.new(0,0,1,-42),
+    Size=UDim2.new(1,-20,0,20), Position=UDim2.new(0,10,1,-46),
     BackgroundTransparency=1,
     Text=autoDetected and "Обнаружен тачскрин — рекомендуется ТЕЛЕФОН" or "Обнаружена клавиатура — рекомендуется ПК",
-    TextColor3=Theme.Success, Font=Enum.Font.GothamMedium, TextSize=11,
-    Parent=PCenter
+    TextColor3=Theme.Success, Font=Enum.Font.GothamMedium, TextSize=12,
+    TextXAlignment=Enum.TextXAlignment.Center, Parent=PCenter
 })
+
+if autoDetected then
+    Tween(MobileStroke, 0.3, {Color=Theme.Success, Thickness=2})
+else
+    Tween(PCStroke, 0.3, {Color=Theme.Success, Thickness=2})
+end
 
 local function FinalizePlatform(platform)
     if PlatformSelected then return end
@@ -443,7 +465,6 @@ local function FinalizePlatform(platform)
     CFG.UI.Platform = platform
     CFG.UI.IsMobile = (platform == "Mobile")
     PlaySound(CFG.UI.ClickSound, 0.3)
-
     Tween(PFrame, 0.4, {BackgroundTransparency=1})
     for _, c in ipairs(PCenter:GetDescendants()) do
         if c:IsA("TextLabel") then Tween(c, 0.3, {TextTransparency=1})
@@ -460,7 +481,7 @@ PCButton.MouseButton1Click:Connect(function() FinalizePlatform("PC") end)
 MobileButton.MouseButton1Click:Connect(function() FinalizePlatform("Mobile") end)
 PCButton.TouchTap:Connect(function() FinalizePlatform("PC") end)
 MobileButton.TouchTap:Connect(function() FinalizePlatform("Mobile") end)
--- ═══════════════════ LOADING ═══════════════════
+-- LOADING
 local loadingFrame = Create("Frame", {
     Size=UDim2.new(1,0,1,0), BackgroundColor3=Color3.fromRGB(8,8,10),
     BorderSizePixel=0, ZIndex=9999, Visible=false, Parent=gui
@@ -491,8 +512,7 @@ local lbF = Create("Frame", {
 })
 Corner(lbF, 2)
 
--- ═══════════════════ MAIN ═══════════════════
--- Размеры зависят от платформы (заполняются после выбора)
+-- MAIN
 local WIN_W, WIN_H = 700, 430
 local NAV_W = 155
 local TOP_H = 44
@@ -551,7 +571,7 @@ Create("TextLabel", {
     Text="Z", TextColor3=Theme.Bg, Font=Enum.Font.GothamBlack,
     TextSize=18, ZIndex=52, Parent=logo
 })
-local titleLbl = Create("TextLabel", {
+Create("TextLabel", {
     Size=UDim2.new(0,200,0,20), Position=UDim2.new(0,54,0,8),
     BackgroundTransparency=1, Text="ZENITH EMPIRE", TextColor3=Theme.Text,
     Font=Enum.Font.GothamBold, TextSize=15,
@@ -575,7 +595,7 @@ closeBtn.MouseEnter:Connect(function() Tween(closeBtn, 0.15, {BackgroundColor3=T
 closeBtn.MouseLeave:Connect(function() Tween(closeBtn, 0.15, {BackgroundColor3=Theme.Element, TextColor3=Theme.TextDim}) end)
 closeBtn.MouseButton1Click:Connect(function() Click(); _G.ZenithEmpireSetMenuOpen(false) end)
 
--- MOBILE MENU BUTTON (для телефона)
+-- Mobile menu button
 local mobileMenuBtn = Create("TextButton", {
     Name="MobileMenuBtn",
     Size=UDim2.new(0,50,0,50), Position=UDim2.new(0,20,0.5,-25),
@@ -594,7 +614,6 @@ mobileMenuBtn.TouchTap:Connect(function()
     _G.ZenithEmpireSetMenuOpen(not menuOpen)
 end)
 
--- NAV
 local Nav = Create("Frame", {
     Size=UDim2.new(0,NAV_W,1,-TOP_H-16), Position=UDim2.new(0,12,0,TOP_H+6),
     BackgroundColor3=Theme.Panel, BackgroundTransparency=0.25,
@@ -653,7 +672,7 @@ Create("TextLabel", {
     ZIndex=51, Parent=Main
 })
 
--- ═══════════════════ PREVIEW ═══════════════════
+-- PREVIEW
 PreviewGroup = Create("CanvasGroup", {
     Name="PreviewGroup", Size=UDim2.new(0,220,0,WIN_H),
     Position=UDim2.new(0.5,WIN_W/2+10,0.5,-WIN_H/2),
@@ -689,7 +708,7 @@ local Viewport = Create("ViewportFrame", {
 Corner(Viewport, 10)
 Stroke(Viewport, Theme.Stroke, 1)
 
--- ═══════════════════ PALETTE ═══════════════════
+-- PALETTE
 local Palette = Create("Frame", {
     Size=UDim2.new(0,240,0,240), Position=UDim2.new(0.5,-120,0.5,-120),
     BackgroundColor3=Theme.Bg2, BorderSizePixel=0,
@@ -813,7 +832,10 @@ local function OpenPalette(initial, cb)
     Palette.Visible = true
 end
 
--- ═══════════════════ WIDGETS ═══════════════════
+-- WIDGETS
+local toggleRefs = {}
+local sliderRefs = {}
+
 local function SectionLabel(text)
     Create("TextLabel", {
         Size=UDim2.new(1,-4,0,18), BackgroundTransparency=1,
@@ -839,7 +861,7 @@ local function Toggle(text, default, callback)
     })
     local track = Create("Frame", {
         Size=UDim2.new(0,32,0,16), Position=UDim2.new(1,-46,0.5,-8),
-        BackgroundColor3=state and Theme.Accent or Color3.fromRGB(60,60,68),
+        BackgroundColor3=state and _G.ZenithAccent() or Color3.fromRGB(60,60,68),
         BorderSizePixel=0, Parent=btn
     })
     Corner(track, 8)
@@ -860,13 +882,19 @@ local function Toggle(text, default, callback)
     end)
     local function set(v, silent)
         state = v
-        Tween(track, 0.18, {BackgroundColor3=v and Theme.Accent or Color3.fromRGB(60,60,68)})
+        local accent = _G.ZenithAccent()
+        Tween(track, 0.18, {BackgroundColor3=v and accent or Color3.fromRGB(60,60,68)})
         Tween(ball, 0.18, {
             Position=v and UDim2.new(1,-14,0.5,-6) or UDim2.new(0,2,0.5,-6),
             BackgroundColor3=v and Theme.Bg or Color3.fromRGB(200,200,210)
         })
         if not silent then SafeCall(callback, v) end
     end
+    local function refresh()
+        local accent = _G.ZenithAccent()
+        track.BackgroundColor3 = state and accent or Color3.fromRGB(60,60,68)
+    end
+    table.insert(toggleRefs, {track=track, refresh=refresh})
     btn.MouseButton1Click:Connect(function() set(not state); Click() end)
     btn.TouchTap:Connect(function() set(not state); Click() end)
     return {set=set, get=function() return state end}
@@ -900,7 +928,7 @@ local function Slider(text, min, max, default, callback)
     Corner(track, 4)
     local fill = Create("Frame", {
         Size=UDim2.new((val-min)/(max-min), 0, 1, 0),
-        BackgroundColor3=Theme.Accent, BorderSizePixel=0, Parent=track
+        BackgroundColor3=_G.ZenithAccent(), BorderSizePixel=0, Parent=track
     })
     Corner(fill, 4)
     local dragging = false
@@ -912,6 +940,10 @@ local function Slider(text, min, max, default, callback)
         valueLbl.Text = tostring(math.floor(val * 100) / 100)
         SafeCall(callback, val)
     end
+    local function refresh()
+        fill.BackgroundColor3 = _G.ZenithAccent()
+    end
+    table.insert(sliderRefs, {fill=fill, refresh=refresh})
     track.InputBegan:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
             dragging=true; update(i)
@@ -953,10 +985,8 @@ local function Button(text, callback)
     return btn
 end
 
--- Keybind: на ПК — запись клавиши, на телефоне — большая кнопка Toggle
 local function Keybind(text, defaultKey, callback)
     if CFG.UI.IsMobile then
-        -- Телефонный вариант — простая кнопка-переключатель
         local state = false
         local btn = Create("TextButton", {
             Size=UDim2.new(1,-8,0,40), BackgroundColor3=Theme.Element,
@@ -966,26 +996,19 @@ local function Keybind(text, defaultKey, callback)
         })
         Corner(btn, 8)
         Stroke(btn, Theme.Stroke, 1)
-        btn.MouseButton1Click:Connect(function()
+        local function flip()
             state = not state
             btn.Text = text .. ": " .. (state and "ON" or "OFF")
-            btn.BackgroundColor3 = state and Theme.Accent or Theme.Element
+            btn.BackgroundColor3 = state and _G.ZenithAccent() or Theme.Element
             btn.TextColor3 = state and Theme.Bg or Theme.Text
             Click()
             SafeCall(callback, state)
-        end)
-        btn.TouchTap:Connect(function()
-            state = not state
-            btn.Text = text .. ": " .. (state and "ON" or "OFF")
-            btn.BackgroundColor3 = state and Theme.Accent or Theme.Element
-            btn.TextColor3 = state and Theme.Bg or Theme.Text
-            Click()
-            SafeCall(callback, state)
-        end)
+        end
+        btn.MouseButton1Click:Connect(flip)
+        btn.TouchTap:Connect(flip)
         return function() return state end
     end
 
-    -- ПК-вариант
     local currentKey = defaultKey
     local btn = Create("TextButton", {
         Size=UDim2.new(1,-8,0,32), BackgroundColor3=Theme.Element,
@@ -1052,33 +1075,6 @@ local function ColorPicker(text, defaultColor, callback)
     btn.MouseButton1Click:Connect(open)
     btn.TouchTap:Connect(open)
     return {set=function(c) sw.BackgroundColor3=c end}
-end
-
-local function Textbox(text, default, callback)
-    local frame = Create("Frame", {
-        Size=UDim2.new(1,-8,0,32), BackgroundColor3=Theme.Element, Parent=Scroll
-    })
-    Corner(frame, 8)
-    Stroke(frame, Theme.Stroke, 1)
-    Create("TextLabel", {
-        Size=UDim2.new(0.5,-14,1,0), Position=UDim2.new(0,14,0,0),
-        BackgroundTransparency=1, Text=text, TextColor3=Theme.Text,
-        Font=Enum.Font.GothamMedium, TextSize=13,
-        TextXAlignment=Enum.TextXAlignment.Left, Parent=frame
-    })
-    local box = Create("TextBox", {
-        Size=UDim2.new(0.5,-14,1,-8), Position=UDim2.new(0.5,0,0,4),
-        BackgroundColor3=Color3.fromRGB(20,20,24),
-        Text=tostring(default or ""),
-        TextColor3=Theme.Text,
-        PlaceholderText="...",
-        Font=Enum.Font.GothamMedium, TextSize=12,
-        ClearTextOnFocus=false, Parent=frame
-    })
-    Corner(box, 5)
-    Stroke(box, Theme.Stroke, 1)
-    box.FocusLost:Connect(function() SafeCall(callback, box.Text) end)
-    return box
 end
 
 local function Dropdown(text, options, default, callback)
@@ -1153,7 +1149,7 @@ local function Dropdown(text, options, default, callback)
 
     return {set=function(v) current = v; valLbl.Text = tostring(v) end}
 end
--- ═══════════════════ PREVIEW BUILD ═══════════════════
+-- PREVIEW BUILD
 local previewModel, previewAngle = nil, 0
 local previewAura, previewHalo, previewChamsHL, previewOutlineHL, previewRing, previewParticles
 local previewOrbs = {}
@@ -1265,7 +1261,7 @@ if LocalPlayer.Character then WatchCharacter(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(function(c) task.wait(1); WatchCharacter(c); BuildPreview() end)
 refreshBtn.MouseButton1Click:Connect(function() Click(); BuildPreview(); Notify("Превью обновлено", Theme.Success) end)
 
--- ═══════════════════ PAGES ═══════════════════
+-- PAGES
 local pages = {}
 local navButtons = {}
 local currentPage
@@ -1284,7 +1280,7 @@ local function AddNavButton(name)
     Corner(btn, 8)
     local accent = Create("Frame", {
         Size=UDim2.new(0,3,0.5,0), Position=UDim2.new(0,0,0.25,0),
-        BackgroundColor3=Theme.Accent, BorderSizePixel=0,
+        BackgroundColor3=_G.ZenithAccent(), BorderSizePixel=0,
         BackgroundTransparency=1, Parent=btn
     })
     Corner(accent, 2)
@@ -1324,10 +1320,44 @@ local function AddNavButton(name)
     navButtons[name] = {btn=btn, accent=accent, label=label}
 end
 
--- ═══ ГЛАВНАЯ ═══
+-- ГЛАВНАЯ
 pages["Главная"] = function()
     SectionLabel("ОБЩЕЕ")
-    Toggle("Master Switch", CFG.Master, function(v) CFG.Master = v end)
+    Toggle("Master Switch", CFG.Master, function(v)
+        CFG.Master = v
+        if not v then
+            -- Выключаем ВСЁ при снятии Master
+            for name, cfg in pairs(CFG.Char) do
+                if type(cfg) == "table" and cfg.Enabled ~= nil then cfg.Enabled = false end
+            end
+            for _, k in ipairs({"Box","Name","Health","Distance","Tracer","HeadDot","Chams","Outline","Rainbow"}) do
+                CFG.ESP[k] = false
+            end
+            for k, _ in pairs(CFG.Cheats) do
+                if type(CFG.Cheats[k]) == "boolean" and k:find("Enabled") then
+                    CFG.Cheats[k] = false
+                end
+            end
+            if CFG.Cheats then
+                CFG.Cheats.AntiFling = false
+                CFG.Cheats.AntiVoid = false
+                CFG.Cheats.InfiniteJump = false
+                CFG.Cheats.DoubleJump = false
+                CFG.Cheats.GodMode = false
+                CFG.Cheats.AntiAFK = false
+                CFG.Cheats.AntiSlow = false
+                CFG.Cheats.AntiStun = false
+                CFG.Cheats.NoFallDamage = false
+                CFG.Cheats.FreezePlayer = false
+                CFG.Cheats.WalkOnWater = false
+                CFG.Cheats.AutoRespawn = false
+                CFG.Cheats.InfiniteYield = false
+            end
+            Notify("Master OFF — всё выключено", Theme.Danger)
+        else
+            Notify("Master ON", Theme.Success)
+        end
+    end)
     SectionLabel("ФИЛЬТРЫ")
     Toggle("Team Check", CFG.ESP.TeamCheck, function(v) CFG.ESP.TeamCheck = v end)
     SectionLabel("БЫСТРОЕ")
@@ -1349,7 +1379,7 @@ pages["Главная"] = function()
     end)
 end
 
--- ═══ ЧИТЫ ═══
+-- ЧИТЫ
 pages["Читы"] = function()
     local CC = CFG.Cheats
 
@@ -1407,6 +1437,14 @@ pages["Читы"] = function()
     Toggle("Anti-Fling", CC.AntiFling, function(v) CC.AntiFling = v end)
     Toggle("Anti-Fling Aggressive", CC.AntiFlingAggressive, function(v) CC.AntiFlingAggressive = v end)
 
+    SectionLabel("FLING (швырять игроков)")
+    Toggle("Fling Enabled", CC.FlingEnabled, function(v)
+        CC.FlingEnabled = v
+        if v then Notify("Fling ON — жми " .. (CC.FlingKeybind and CC.FlingKeybind.Name or "G"), Theme.Success) end
+    end)
+    Dropdown("Fling Target", {"Nearest", "All", "Selected"}, CC.FlingTargetMode, function(v) CC.FlingTargetMode = v end)
+    Keybind("Fling Keybind", CC.FlingKeybind, function(k) CC.FlingKeybind = k end)
+
     SectionLabel("АНТИ-ВОИД")
     Toggle("Anti-Void", CC.AntiVoid, function(v) CC.AntiVoid = v end)
     Slider("Anti-Void Y", -500, 50, CC.AntiVoidY, function(v) CC.AntiVoidY = v end)
@@ -1432,7 +1470,7 @@ pages["Читы"] = function()
         end
     end)
 
-    SectionLabel("GODMODE (локальный)")
+    SectionLabel("GODMODE")
     Toggle("God Mode", CC.GodMode, function(v)
         CC.GodMode = v
         local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -1506,7 +1544,7 @@ pages["Читы"] = function()
     end)
 end
 
--- ═══ МИР ═══
+-- МИР
 pages["Мир"] = function()
     SectionLabel("ОСВЕЩЕНИЕ")
     Toggle("Fullbright", CFG.World.Fullbright, function(v)
@@ -1582,7 +1620,7 @@ pages["Мир"] = function()
     end)
 end
 
--- ═══ ПЕРСОНАЖ ═══
+-- ПЕРСОНАЖ
 pages["Персонаж"] = function()
     SectionLabel("HALO")
     Toggle("Halo Enabled", CFG.Char.Halo.Enabled, function(v) CFG.Char.Halo.Enabled = v end)
@@ -1664,7 +1702,7 @@ pages["Персонаж"] = function()
     Slider("Rainbow Speed", 0.1, 5, CFG.Char.Rainbow.Speed, function(v) CFG.Char.Rainbow.Speed = v end)
 end
 
--- ═══ ESP ═══
+-- ESP
 pages["ESP"] = function()
     SectionLabel("BOX")
     Toggle("Box Enabled", CFG.ESP.Box, function(v) CFG.ESP.Box = v end)
@@ -1706,7 +1744,7 @@ pages["ESP"] = function()
     Toggle("Rainbow ESP", CFG.ESP.Rainbow, function(v) CFG.ESP.Rainbow = v end)
     Slider("Distance Limit", 50, 2000, CFG.ESP.DistanceLimit, function(v) CFG.ESP.DistanceLimit = v end)
 end
--- ═══ ЗВУКИ ═══
+-- ЗВУКИ
 pages["Звуки"] = function()
     SectionLabel("ОСНОВНЫЕ")
     Toggle("Enable Sounds", CFG.UI.Sounds, function(v) CFG.UI.Sounds = v end)
@@ -1727,7 +1765,7 @@ pages["Звуки"] = function()
     end
 end
 
--- ═══ УВЕДОМЛЕНИЯ ═══
+-- УВЕДОМЛЕНИЯ
 pages["Уведомления"] = function()
     SectionLabel("ОСНОВНЫЕ")
     Toggle("Enable Notifications", CFG.Notifications, function(v) CFG.Notifications = v end)
@@ -1759,7 +1797,7 @@ pages["Уведомления"] = function()
     Button("Test Error", function() Notify("Ошибка!", Theme.Danger) end)
 end
 
--- ═══ АНИМАЦИИ ═══
+-- АНИМАЦИИ
 pages["Анимации"] = function()
     SectionLabel("СКОРОСТЬ UI")
     Slider("Anim Speed", 0.1, 1, CFG.UI.AnimSpeed, function(v) CFG.UI.AnimSpeed = v end)
@@ -1777,7 +1815,7 @@ pages["Анимации"] = function()
     end)
 end
 
--- ═══ HOTKEYS ═══
+-- HOTKEYS
 pages["Hotkeys"] = function()
     SectionLabel("МЕНЮ")
     Keybind("Toggle Menu", CFG.ToggleKey, function(k) CFG.ToggleKey = k end)
@@ -1789,9 +1827,9 @@ pages["Hotkeys"] = function()
     end)
 end
 
--- ═══ ПРОФИЛИ ═══
+-- ПРОФИЛИ
 pages["Профили"] = function()
-    SectionLabel("ПРЕСЕТЫ (быстрое сохранение)")
+    SectionLabel("ПРЕСЕТЫ")
     local presets = {
         "Combat", "Chill", "Streamer", "Tryhard", "Casual",
         "Stealth", "Cinematic", "Minimal", "Maximal", "Stealth PvP"
@@ -1810,7 +1848,7 @@ pages["Профили"] = function()
         })
         local saveBtn = Create("TextButton", {
             Size=UDim2.new(0,60,1,-8), Position=UDim2.new(1,-130,0,4),
-            BackgroundColor3=Theme.Accent, Text="Save",
+            BackgroundColor3=_G.ZenithAccent(), Text="Save",
             TextColor3=Theme.Bg, Font=Enum.Font.GothamMedium, TextSize=11,
             AutoButtonColor=false, Parent=row
         })
@@ -1835,7 +1873,7 @@ pages["Профили"] = function()
     end
 end
 
--- ═══ КОНФИГИ ═══
+-- КОНФИГИ
 pages["Конфиги"] = function()
     SectionLabel("УПРАВЛЕНИЕ")
     local nameRow = Create("Frame", {
@@ -1893,7 +1931,7 @@ pages["Конфиги"] = function()
             Size=UDim2.new(1,-20,0,20), Position=UDim2.new(0,12,0,6),
             BackgroundTransparency=1,
             Text=(active and "[ACTIVE] " or "[" .. idx .. "] ") .. cfgName,
-            TextColor3=active and Theme.Accent or Theme.Text,
+            TextColor3=active and _G.ZenithAccent() or Theme.Text,
             Font=Enum.Font.GothamBold, TextSize=13,
             TextXAlignment=Enum.TextXAlignment.Left, Parent=card
         })
@@ -1910,7 +1948,7 @@ pages["Конфиги"] = function()
             return b
         end
 
-        makeBtn("Save", -256, Theme.Accent, Theme.Bg, function()
+        makeBtn("Save", -256, _G.ZenithAccent(), Theme.Bg, function()
             local ok, msg = SaveConfig(cfgName)
             Notify(msg, ok and Theme.Success or Theme.Danger)
         end)
@@ -1933,7 +1971,7 @@ pages["Конфиги"] = function()
     end
 end
 
--- ═══ НАСТРОЙКИ ═══
+-- НАСТРОЙКИ
 pages["Настройки"] = function()
     SectionLabel("ОБЩЕЕ")
     Toggle("Notifications", CFG.Notifications, function(v) CFG.Notifications = v end)
@@ -1949,10 +1987,21 @@ pages["Настройки"] = function()
     end)
 end
 
--- ═══ НАСТРОЙКИ МЕНЮ ═══
+-- НАСТРОЙКИ МЕНЮ
 pages["Настройки меню"] = function()
     SectionLabel("ВНЕШНИЙ ВИД")
-    ColorPicker("Accent Color", CFG.UI.Accent, function(c) CFG.UI.Accent = c end)
+    ColorPicker("Accent Color", CFG.UI.Accent, function(c)
+        CFG.UI.Accent = c
+        for _, ref in ipairs(toggleRefs) do
+            if ref.refresh then ref.refresh() end
+        end
+        for _, ref in ipairs(sliderRefs) do
+            if ref.refresh then ref.refresh() end
+        end
+        for _, b in pairs(navButtons) do
+            b.accent.BackgroundColor3 = _G.ZenithAccent()
+        end
+    end)
     Toggle("Blur Background", CFG.UI.Blur, function(v)
         CFG.UI.Blur = v
         if v and menuOpen then Tween(mainBlur, 0.3, {Size=14})
@@ -1968,7 +2017,7 @@ pages["Настройки меню"] = function()
     end)
 end
 
--- Регистрация всех вкладок
+-- Регистрация вкладок
 AddNavButton("Главная")
 AddNavButton("Читы")
 AddNavButton("Мир")
@@ -1994,7 +2043,7 @@ for n, b in pairs(navButtons) do
     b.label.TextColor3 = active and Theme.Text or Theme.TextDim
 end
 
--- ═══════════════════ MENU OPEN/CLOSE ═══════════════════
+-- MENU OPEN/CLOSE
 menuOpen = false
 _G.ZenithMenuOpen = function() return menuOpen end
 
@@ -2022,35 +2071,22 @@ function _G.ZenithEmpireSetMenuOpen(v)
     end
 end
 
--- Платформа выбрана → инициализация UI
 _G.ZenithEmpireOnPlatformChosen = function(platform)
     if platform == "Mobile" then
-        -- Мобильный режим: меняем размеры
         WIN_W, WIN_H = 380, 620
         NAV_W = 110
         TOP_H = 40
-
         MainGroup.Size = UDim2.new(0, WIN_W, 0, WIN_H)
         MainGroup.Position = UDim2.new(0.5, -WIN_W/2, 0.5, -WIN_H/2)
-
         Nav.Size = UDim2.new(0, NAV_W, 1, -TOP_H - 16)
         Content.Size = UDim2.new(1, -NAV_W - 24, 1, -TOP_H - 16)
         Content.Position = UDim2.new(0, NAV_W + 18, 0, TOP_H + 6)
-
-        PreviewGroup.Visible = false    -- на телефоне превью скрыто по умолчанию
-        PreviewGroup.Size = UDim2.new(0, 0, 0, 0)  -- выкл
-
-        -- Показываем плавающую кнопку
+        PreviewGroup.Visible = false
+        PreviewGroup.Size = UDim2.new(0, 0, 0, 0)
         mobileMenuBtn.Visible = true
-
-        -- Убираем превью-окно на телефоне (место занимает)
-        -- Preview панель скрыта
     else
-        -- ПК-режим оставляем как есть
         mobileMenuBtn.Visible = false
     end
-
-    -- Автооткрытие меню
     task.wait(0.4)
     _G.ZenithEmpireSetMenuOpen(true)
     task.wait(0.6)
@@ -2059,11 +2095,8 @@ _G.ZenithEmpireOnPlatformChosen = function(platform)
     else
         Notify("RightShift - открыть меню", Theme.Accent2)
     end
-    task.wait(0.4)
-    Notify("Panic Key: End", Theme.TextMuted)
 end
 
--- INPUT
 local panicState = false
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
@@ -2091,7 +2124,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- ═══════════════════ ЧИТЫ — ОБРАБОТКА ═══════════════════
+-- ЧИТЫ ОБРАБОТКА
 local CC = CFG.Cheats
 local blinkLastUse = 0
 
@@ -2105,17 +2138,62 @@ UserInputService.InputBegan:Connect(function(input, gpe)
         if now - blinkLastUse >= CC.BlinkCooldown then
             blinkLastUse = now
             local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, -CC.BlinkDistance)
-            end
+            if hrp then hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, -CC.BlinkDistance) end
         end
     elseif input.KeyCode == CC.TeleportKeybind and CC.TeleportEnabled then
         if CC.TeleportToCursor then
             local mouse = LocalPlayer:GetMouse()
             local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp and mouse.Hit then
-                hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+            if hrp and mouse.Hit then hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0)) end
+        end
+    elseif input.KeyCode == CC.FlingKeybind and CC.FlingEnabled then
+        local function flingPlayer(plr)
+            local myChar = LocalPlayer.Character
+            local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            local targetChar = plr.Character
+            local tHrp = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+            if not myHrp or not tHrp then return end
+            local origSize = myHrp.Size
+            myHrp.Size = Vector3.new(0.05, 0.05, 0.05)
+            myHrp.CanCollide = false
+            myHrp.Massless = false
+            myHrp.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5, 100, 100)
+            myHrp.CFrame = tHrp.CFrame * CFrame.new(0, 0, 0)
+            local spin = Instance.new("BodyAngularVelocity")
+            spin.AngularVelocity = Vector3.new(0, 100000, 0)
+            spin.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            spin.Parent = myHrp
+            task.delay(0.5, function()
+                if spin and spin.Parent then spin:Destroy() end
+                if myHrp and myHrp.Parent then
+                    myHrp.Size = origSize
+                    myHrp.CustomPhysicalProperties = nil
+                end
+            end)
+        end
+        if CC.FlingTargetMode == "Nearest" then
+            local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if myHrp then
+                local closest, bestDist = nil, math.huge
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    if plr ~= LocalPlayer and plr.Character then
+                        local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            local d = (hrp.Position - myHrp.Position).Magnitude
+                            if d < bestDist then bestDist = d; closest = plr end
+                        end
+                    end
+                end
+                if closest then
+                    flingPlayer(closest)
+                    Notify("Fling: " .. closest.Name, Theme.Success)
+                end
             end
+        elseif CC.FlingTargetMode == "All" then
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character then flingPlayer(plr) end
+            end
+            Notify("Fling ALL", Theme.Success)
         end
     end
 end)
@@ -2134,127 +2212,86 @@ task.spawn(function()
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not char or not hum then task.wait(0.1); continue end
 
-        if not char or not hum then
-            task.wait(0.1)
-            continue
-        end
-
-        if CC.SpeedEnabled and CC.SpeedMode == "Toggle" and CFG.Master then
-            if hum.WalkSpeed ~= CC.WalkSpeed then hum.WalkSpeed = CC.WalkSpeed end
-        end
-
-        if CC.JumpEnabled and CFG.Master then
-            hum.UseJumpPower = true
-            if hum.JumpPower ~= CC.JumpPower then hum.JumpPower = CC.JumpPower end
-        end
-
-        if CC.InfiniteJump and CFG.Master then
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        if CFG.Master then
+            if CC.SpeedEnabled and CC.SpeedMode == "Toggle" then
+                if hum.WalkSpeed ~= CC.WalkSpeed then hum.WalkSpeed = CC.WalkSpeed end
             end
-        end
-
-        if CC.NoclipEnabled and CFG.Master and CC.NoclipMode == "Toggle" then
-            for _, p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
+            if CC.JumpEnabled then
+                hum.UseJumpPower = true
+                if hum.JumpPower ~= CC.JumpPower then hum.JumpPower = CC.JumpPower end
             end
-        end
-
-        if CC.FlyEnabled and CFG.Master and hrp then
-            local bv = hrp:FindFirstChild("ZenithFlyBV")
-            local bg = hrp:FindFirstChild("ZenithFlyBG")
-            if not bv then
-                bv = Create("BodyVelocity", {Name="ZenithFlyBV", MaxForce=Vector3.new(1e5,1e5,1e5), Velocity=Vector3.zero, P=1250, Parent=hrp})
+            if CC.InfiniteJump then
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
             end
-            if not bg then
-                bg = Create("BodyGyro", {Name="ZenithFlyBG", MaxTorque=Vector3.new(1e5,1e5,1e5), P=3000, D=50, CFrame=hrp.CFrame, Parent=hrp})
-            end
-
-            local move = Vector3.zero
-            if CC.FlyMode == "WASD" or CC.FlyMode == "Both" then
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += Camera.CFrame.LookVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= Camera.CFrame.LookVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= Camera.CFrame.RightVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += Camera.CFrame.RightVector end
-            end
-            if CC.FlyVertical then
-                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0, 1, 0) end
-                if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0, 1, 0) end
-            end
-
-            if move.Magnitude > 0 then
-                bv.Velocity = move.Unit * CC.FlySpeed
-            else
-                bv.Velocity = Vector3.zero
-            end
-            bg.CFrame = CFrame.new(hrp.Position, hrp.Position + Camera.CFrame.LookVector)
-
-            if CC.FlyNoClip then
+            if CC.NoclipEnabled and CC.NoclipMode == "Toggle" then
                 for _, p in ipairs(char:GetDescendants()) do
-                    if p:IsA("BasePart") then p.CanCollide = false end
+                    if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
                 end
             end
-        else
-            if hrp then
-                local bv = hrp:FindFirstChild("ZenithFlyBV"); if bv then bv:Destroy() end
-                local bg = hrp:FindFirstChild("ZenithFlyBG"); if bg then bg:Destroy() end
-            end
-        end
-
-        if CC.AntiFling and CFG.Master and hrp then
-            for _, v in ipairs(hrp:GetChildren()) do
-                if v:IsA("BodyAngularVelocity") or v:IsA("BodyVelocity") then
-                    if v.Name ~= "ZenithFlyBV" then v:Destroy() end
+            if CC.FlyEnabled and hrp then
+                local bv = hrp:FindFirstChild("ZenithFlyBV")
+                local bg = hrp:FindFirstChild("ZenithFlyBG")
+                if not bv then bv = Create("BodyVelocity", {Name="ZenithFlyBV", MaxForce=Vector3.new(1e5,1e5,1e5), Velocity=Vector3.zero, P=1250, Parent=hrp}) end
+                if not bg then bg = Create("BodyGyro", {Name="ZenithFlyBG", MaxTorque=Vector3.new(1e5,1e5,1e5), P=3000, D=50, CFrame=hrp.CFrame, Parent=hrp}) end
+                local move = Vector3.zero
+                if CC.FlyMode == "WASD" or CC.FlyMode == "Both" then
+                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += Camera.CFrame.LookVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= Camera.CFrame.LookVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= Camera.CFrame.RightVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += Camera.CFrame.RightVector end
                 end
-                if CC.AntiFlingAggressive and (v:IsA("BodyThrust") or v:IsA("BodyPosition")) then
-                    v:Destroy()
+                if CC.FlyVertical then
+                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0, 1, 0) end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0, 1, 0) end
+                end
+                if move.Magnitude > 0 then bv.Velocity = move.Unit * CC.FlySpeed else bv.Velocity = Vector3.zero end
+                bg.CFrame = CFrame.new(hrp.Position, hrp.Position + Camera.CFrame.LookVector)
+                if CC.FlyNoClip then
+                    for _, p in ipairs(char:GetDescendants()) do
+                        if p:IsA("BasePart") then p.CanCollide = false end
+                    end
+                end
+            else
+                if hrp then
+                    local bv = hrp:FindFirstChild("ZenithFlyBV"); if bv then bv:Destroy() end
+                    local bg = hrp:FindFirstChild("ZenithFlyBG"); if bg then bg:Destroy() end
                 end
             end
-        end
-
-        if CC.AntiVoid and CFG.Master and hrp then
-            if hrp.Position.Y < CC.AntiVoidY then
+            if CC.AntiFling and hrp then
+                for _, v in ipairs(hrp:GetChildren()) do
+                    if v:IsA("BodyAngularVelocity") or v:IsA("BodyVelocity") then
+                        if v.Name ~= "ZenithFlyBV" then v:Destroy() end
+                    end
+                    if CC.AntiFlingAggressive and (v:IsA("BodyThrust") or v:IsA("BodyPosition")) then v:Destroy() end
+                end
+            end
+            if CC.AntiVoid and hrp and hrp.Position.Y < CC.AntiVoidY then
                 hrp.CFrame = CFrame.new(hrp.Position.X, 20, hrp.Position.Z)
                 hrp.Velocity = Vector3.zero
             end
-        end
-
-        if CC.AntiAFK and CFG.Master then
-            pcall(function()
-                VirtualUser:CaptureController()
-                VirtualUser:ClickButton2(Vector2.new())
-            end)
-        end
-
-        if CC.AntiSlow and CFG.Master and hum then
-            if hum.WalkSpeed < 10 then hum.WalkSpeed = CC.WalkSpeed end
-        end
-
-        if CC.AntiStun and CFG.Master and hum then
-            if hum.PlatformStand then hum.PlatformStand = false end
-        end
-
-        if CC.AutoRespawn and CFG.Master and hum and hum.Health <= 0 then
-            task.wait(CC.RespawnDelay)
-            LocalPlayer:LoadCharacter()
-        end
-
-        if CC.GodMode and CFG.Master and hum then
-            hum.MaxHealth = math.huge
-            if hum.Health < hum.MaxHealth then hum.Health = hum.MaxHealth end
-        end
-
-        if CC.HipHeightEnabled and CFG.Master and hum then
-            hum.HipHeight = CC.HipHeight
-        end
-
-        if CC.GravityEnabled and CFG.Master then
-            workspace.Gravity = CC.Gravity
-        end
-
-        if CC.NoFallDamage and CFG.Master and hum then
-            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            if CC.AntiAFK then
+                pcall(function()
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
+                end)
+            end
+            if CC.AntiSlow and hum and hum.WalkSpeed < 10 then hum.WalkSpeed = CC.WalkSpeed end
+            if CC.AntiStun and hum and hum.PlatformStand then hum.PlatformStand = false end
+            if CC.AutoRespawn and hum and hum.Health <= 0 then
+                task.wait(CC.RespawnDelay)
+                LocalPlayer:LoadCharacter()
+            end
+            if CC.GodMode and hum then
+                hum.MaxHealth = math.huge
+                if hum.Health < hum.MaxHealth then hum.Health = hum.MaxHealth end
+            end
+            if CC.HipHeightEnabled and hum then hum.HipHeight = CC.HipHeight end
+            if CC.GravityEnabled then workspace.Gravity = CC.Gravity end
+            if CC.NoFallDamage and hum then hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false) end
         end
     end
 end)
@@ -2274,7 +2311,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end
 end)
 
--- ═══════════════════ VISUALS (Character Effects) ═══════════════════
+-- CHARACTER VISUALS
 local charFolder = Create("Folder", {Name="ZenithEmpire_Char", Parent=workspace})
 local function GetChar() return LocalPlayer.Character end
 local function RainbowColor() return Color3.fromHSV((tick() * CFG.Char.Rainbow.Speed % 10) / 10, 1, 1) end
@@ -2283,31 +2320,49 @@ local function GetColor(cfg)
     return cfg.Color
 end
 
+-- HALO — тонкий круг (плоский диск-кольцо) через Cylinder + вырез
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
         local char = GetChar()
         if not char then continue end
         local head = char:FindFirstChild("Head")
-        local halo = charFolder:FindFirstChild("Halo")
+        local haloContainer = charFolder:FindFirstChild("HaloContainer")
         if CFG.Char.Halo.Enabled and CFG.Master and head then
-            if not halo then
-                halo = Create("Part", {
-                    Name="Halo", Size=Vector3.new(2,0.2,2),
-                    Transparency=0, CanCollide=false, Anchored=true,
-                    CanQuery=false, Massless=true, Material=Enum.Material.Neon,
-                    Color=CFG.Char.Halo.Color, Parent=charFolder
-                })
-                Create("SpecialMesh", {MeshType=Enum.MeshType.Torus, Scale=Vector3.new(0.5,0.5,0.5), Parent=halo})
+            if not haloContainer then
+                haloContainer = Create("Folder", {Name="HaloContainer", Parent=charFolder})
+                -- 4 полоски, собранные в круг (ромбовидное кольцо)
+                for i = 1, 4 do
+                    local seg = Create("Part", {
+                        Name="HaloSeg"..i,
+                        Size=Vector3.new(0.15, 0.15, 2),
+                        Transparency=0,
+                        CanCollide=false, Anchored=true, CanQuery=false,
+                        Massless=true, Material=Enum.Material.Neon,
+                        Color=CFG.Char.Halo.Color,
+                        Parent=haloContainer
+                    })
+                end
             end
-            halo.Size = Vector3.new(2*CFG.Char.Halo.Size, 0.2, 2*CFG.Char.Halo.Size)
-            halo.Color = GetColor(CFG.Char.Halo)
+            local segs = haloContainer:GetChildren()
+            local s = CFG.Char.Halo.Size
+            local diameter = 3 * s
             local angle = (tick() * 80 * CFG.Char.Halo.Speed) % 360
-            halo.CFrame = head.CFrame * CFrame.new(0, 1.8*CFG.Char.Halo.Size, 0) * CFrame.Angles(math.rad(15), math.rad(angle), 0)
-        elseif halo then halo:Destroy() end
+            local headCF = head.CFrame * CFrame.new(0, 1.8 * s, 0) * CFrame.Angles(0, math.rad(angle), 0)
+            for i, seg in ipairs(segs) do
+                if seg:IsA("BasePart") then
+                    seg.Size = Vector3.new(0.15, 0.15, diameter * 0.9)
+                    seg.Color = GetColor(CFG.Char.Halo)
+                    seg.CFrame = headCF * CFrame.Angles(0, math.rad((i - 1) * 45), 0) * CFrame.new(0, 0, diameter * 0.5)
+                end
+            end
+        elseif haloContainer then
+            haloContainer:Destroy()
+        end
     end
 end)
 
+-- AURA
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2333,6 +2388,7 @@ task.spawn(function()
     end
 end)
 
+-- FIRE AURA
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2366,6 +2422,7 @@ task.spawn(function()
     end
 end)
 
+-- ICE AURA
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2393,6 +2450,7 @@ task.spawn(function()
     end
 end)
 
+-- LIGHTNING
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2402,7 +2460,8 @@ task.spawn(function()
         if CFG.Char.Lightning.Enabled and CFG.Master and root then
             if not folder then folder = Create("Folder", {Name="Lightning", Parent=charFolder}) end
             task.wait(0.15)
-            for _, c in ipairs(folder:GetChildren()) do c:Destroy() end            for i = 1, CFG.Char.Lightning.Count do
+            for _, c in ipairs(folder:GetChildren()) do c:Destroy() end
+            for i = 1, CFG.Char.Lightning.Count do
                 local a = math.random() * math.pi * 2
                 local r = 2 + math.random() * 2
                 local offset = Vector3.new(math.cos(a)*r, math.random(-2,3), math.sin(a)*r)
@@ -2420,6 +2479,7 @@ task.spawn(function()
     end
 end)
 
+-- WINGS
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2458,6 +2518,7 @@ task.spawn(function()
     end
 end)
 
+-- OUTLINE
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2473,6 +2534,7 @@ task.spawn(function()
     end
 end)
 
+-- CHAMS
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2489,6 +2551,7 @@ task.spawn(function()
     end
 end)
 
+-- TRAIL
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2507,6 +2570,7 @@ task.spawn(function()
     end
 end)
 
+-- GLOW
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2524,6 +2588,7 @@ task.spawn(function()
     end
 end)
 
+-- ORBS
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2553,6 +2618,7 @@ task.spawn(function()
     end
 end)
 
+-- RING
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2572,6 +2638,7 @@ task.spawn(function()
     end
 end)
 
+-- NEON BODY
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2587,6 +2654,7 @@ task.spawn(function()
     end
 end)
 
+-- PARTICLES
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2603,7 +2671,7 @@ task.spawn(function()
     end
 end)
 
--- ═══════════════════ ESP ═══════════════════
+-- ESP
 local espFolder = Create("Folder", {Name="Zenith_EspFolder", Parent=gui})
 local function IsTeammate(plr)
     if not CFG.ESP.TeamCheck then return false end
@@ -2732,7 +2800,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ═══════════════════ FPS/PING ═══════════════════
+-- FPS/PING
 local perfLabel = Create("TextLabel", {Size=UDim2.new(0,250,0,18), Position=UDim2.new(0,12,0,12), BackgroundTransparency=1, Text="", TextColor3=Theme.TextDim, Font=Enum.Font.GothamMedium, TextSize=11, TextXAlignment=Enum.TextXAlignment.Left, TextStrokeTransparency=0.6, Parent=gui})
 local fpsCount, fpsTime, fpsValue = 0, 0, 0
 RunService.RenderStepped:Connect(function(dt)
@@ -2755,49 +2823,7 @@ task.spawn(function()
     end
 end)
 
--- ═══════════════════ PREVIEW VISUALS ═══════════════════
-RunService.Heartbeat:Connect(function()
-    if not previewModel or not menuOpen or CFG.UI.IsMobile then
-        if previewAura then previewAura.Transparency = 1 end
-        if previewChamsHL then previewChamsHL.FillTransparency = 1 end
-        return
-    end
-    local previewRoot = previewModel:FindFirstChild("HumanoidRootPart") or previewModel:FindFirstChild("UpperTorso") or previewModel:FindFirstChild("Torso")
-    if CFG.Char.Aura.Enabled and previewRoot then
-        if not previewAura then
-            previewAura = Create("Part", {Name="PreviewAura", Shape=Enum.PartType.Ball, Size=Vector3.new(5,5,5), Transparency=CFG.Char.Aura.Transp, CanCollide=false, Anchored=true, CanQuery=false, Material=Enum.Material.ForceField, Parent=previewModel})
-        end
-        local bs = 5 * CFG.Char.Aura.Size
-        if CFG.Char.Aura.Pulse then bs = bs + math.sin(tick()*3)*0.4 end
-        previewAura.Size = Vector3.new(bs,bs,bs)
-        previewAura.CFrame = previewRoot.CFrame
-        previewAura.Color = CFG.Char.Rainbow.Enabled and RainbowColor() or CFG.Char.Aura.Color
-        previewAura.Transparency = CFG.Char.Aura.Transp
-    elseif previewAura then previewAura:Destroy(); previewAura = nil end
-
-    local previewHead = previewModel:FindFirstChild("Head")
-    if CFG.Char.Halo.Enabled and previewHead then
-        if not previewHalo then
-            previewHalo = Create("Part", {Name="PreviewHalo", Size=Vector3.new(2,0.2,2), Transparency=0, CanCollide=false, Anchored=true, CanQuery=false, Massless=true, Material=Enum.Material.Neon, Parent=previewModel})
-            Create("SpecialMesh", {MeshType=Enum.MeshType.Torus, Scale=Vector3.new(0.5,0.5,0.5), Parent=previewHalo})
-        end
-        previewHalo.Size = Vector3.new(2*CFG.Char.Halo.Size, 0.2, 2*CFG.Char.Halo.Size)
-        previewHalo.Color = CFG.Char.Rainbow.Enabled and RainbowColor() or CFG.Char.Halo.Color
-        local angle = (tick() * 80 * CFG.Char.Halo.Speed) % 360
-        previewHalo.CFrame = previewHead.CFrame * CFrame.new(0, 1.8*CFG.Char.Halo.Size, 0) * CFrame.Angles(math.rad(15), math.rad(angle), 0)
-    elseif previewHalo then previewHalo:Destroy(); previewHalo = nil end
-end)
-
-RunService.RenderStepped:Connect(function(dt)
-    if previewModel and Viewport.CurrentCamera and menuOpen and not CFG.UI.IsMobile then
-        previewAngle = (previewAngle + dt * 30) % 360
-        local cam = Viewport.CurrentCamera
-        local rad = math.rad(previewAngle)
-        cam.CFrame = CFrame.new(Vector3.new(math.sin(rad)*12, 2, math.cos(rad)*12), Vector3.new(0, 0, 0))
-    end
-end)
-
--- ═══════════════════ STARTUP ═══════════════════
+-- STARTUP
 task.spawn(function()
     loadingFrame.Visible = true
     for i = 0, 100, 3 do
@@ -2812,13 +2838,11 @@ task.spawn(function()
     end
     task.wait(0.6)
     loadingFrame:Destroy()
-    -- BuildPreview вызывается после выбора платформы
     if CFG.ActiveConfig ~= "" and isfile and isfile(CONFIG_FOLDER .. "/" .. CFG.ActiveConfig .. ".json") then
         pcall(function() LoadConfig(CFG.ActiveConfig) end)
     end
 end)
 
--- Ждём выбор платформы и запускаем превью, если ПК
 task.spawn(function()
     while not CFG.UI.Platform do task.wait(0.1) end
     task.wait(0.5)
