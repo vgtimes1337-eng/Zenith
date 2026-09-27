@@ -319,6 +319,73 @@ local function Notify(text, color)
     end)
 end
 
+-- WELCOME SCREEN
+local function ShowWelcomeScreen(callback)
+    local welcomeGui = Create("ScreenGui", {
+        Name="ZenithWelcome", ResetOnSpawn=false, IgnoreGuiInset=true,
+        ZIndexBehavior=Enum.ZIndexBehavior.Sibling, DisplayOrder=1001,
+        Parent=(gethui and gethui()) or CoreGui
+    })
+
+    local bg = Create("Frame", {
+        Size=UDim2.new(1,0,1,0), BackgroundColor3=Color3.fromRGB(8,8,10),
+        BackgroundTransparency=1, BorderSizePixel=0, Parent=welcomeGui
+    })
+
+    -- Логотип Z (внутри круга)
+    local logoCircle = Create("Frame", {
+        Size=UDim2.new(0,80,0,80), Position=UDim2.new(0.5,-40,0.5,-140),
+        BackgroundColor3=Theme.Accent, BorderSizePixel=0,
+        BackgroundTransparency=1, Parent=bg
+    })
+    Corner(logoCircle, 40)
+    local logoText = Create("TextLabel", {
+        Size=UDim2.new(1,0,1,0), BackgroundTransparency=1,
+        Text="Z", TextColor3=Theme.Bg, Font=Enum.Font.GothamBlack,
+        TextSize=46, TextTransparency=1, Parent=logoCircle
+    })
+
+    -- Основной текст приветствия
+    local welcomeText = Create("TextLabel", {
+        Size=UDim2.new(1,0,0,60), Position=UDim2.new(0,0,0.5,-10),
+        BackgroundTransparency=1,
+        Text="Здравствуйте, " .. LocalPlayer.Name .. "!",
+        TextColor3=Theme.Text, Font=Enum.Font.GothamBlack, TextSize=42,
+        TextTransparency=1, Parent=bg
+    })
+
+    local subText = Create("TextLabel", {
+        Size=UDim2.new(1,0,0,24), Position=UDim2.new(0,0,0.5,60),
+        BackgroundTransparency=1,
+        Text="Добро пожаловать в Zenith Empire",
+        TextColor3=Theme.TextDim, Font=Enum.Font.Gotham, TextSize=14,
+        TextTransparency=1, Parent=bg
+    })
+
+    -- Анимация появления
+    Tween(bg, 0.5, {BackgroundTransparency=0})
+    Tween(logoCircle, 0.5, {BackgroundTransparency=0})
+    task.wait(0.15)
+    Tween(logoText, 0.4, {TextTransparency=0})
+    task.wait(0.3)
+    Tween(welcomeText, 0.5, {TextTransparency=0})
+    task.wait(0.15)
+    Tween(subText, 0.5, {TextTransparency=0})
+
+    -- Пауза и исчезновение
+    task.wait(1.8)
+    Tween(welcomeText, 0.4, {TextTransparency=1})
+    Tween(subText, 0.4, {TextTransparency=1})
+    Tween(logoText, 0.4, {TextTransparency=1})
+    Tween(logoCircle, 0.4, {BackgroundTransparency=1})
+    Tween(bg, 0.5, {BackgroundTransparency=1})
+
+    task.wait(0.6)
+    welcomeGui:Destroy()
+    if callback then callback() end
+end
+
+-- PLATFORM SELECTOR
 local function DetectMobile()
     local ok, result = pcall(function()
         return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -473,7 +540,10 @@ local function FinalizePlatform(platform)
     Tween(PCenter, 0.4, {BackgroundTransparency=1})
     task.delay(0.5, function()
         PlatformGui:Destroy()
-        if _G.ZenithEmpireOnPlatformChosen then _G.ZenithEmpireOnPlatformChosen(platform) end
+        -- Показываем приветствие
+        ShowWelcomeScreen(function()
+            if _G.ZenithEmpireOnPlatformChosen then _G.ZenithEmpireOnPlatformChosen(platform) end
+        end)
     end)
 end
 
@@ -1326,7 +1396,6 @@ pages["Главная"] = function()
     Toggle("Master Switch", CFG.Master, function(v)
         CFG.Master = v
         if not v then
-            -- Выключаем ВСЁ при снятии Master
             for name, cfg in pairs(CFG.Char) do
                 if type(cfg) == "table" and cfg.Enabled ~= nil then cfg.Enabled = false end
             end
@@ -1334,24 +1403,7 @@ pages["Главная"] = function()
                 CFG.ESP[k] = false
             end
             for k, _ in pairs(CFG.Cheats) do
-                if type(CFG.Cheats[k]) == "boolean" and k:find("Enabled") then
-                    CFG.Cheats[k] = false
-                end
-            end
-            if CFG.Cheats then
-                CFG.Cheats.AntiFling = false
-                CFG.Cheats.AntiVoid = false
-                CFG.Cheats.InfiniteJump = false
-                CFG.Cheats.DoubleJump = false
-                CFG.Cheats.GodMode = false
-                CFG.Cheats.AntiAFK = false
-                CFG.Cheats.AntiSlow = false
-                CFG.Cheats.AntiStun = false
-                CFG.Cheats.NoFallDamage = false
-                CFG.Cheats.FreezePlayer = false
-                CFG.Cheats.WalkOnWater = false
-                CFG.Cheats.AutoRespawn = false
-                CFG.Cheats.InfiniteYield = false
+                if type(CFG.Cheats[k]) == "boolean" then CFG.Cheats[k] = false end
             end
             Notify("Master OFF — всё выключено", Theme.Danger)
         else
@@ -1442,7 +1494,7 @@ pages["Читы"] = function()
         CC.FlingEnabled = v
         if v then Notify("Fling ON — жми " .. (CC.FlingKeybind and CC.FlingKeybind.Name or "G"), Theme.Success) end
     end)
-    Dropdown("Fling Target", {"Nearest", "All", "Selected"}, CC.FlingTargetMode, function(v) CC.FlingTargetMode = v end)
+    Dropdown("Fling Target", {"Nearest", "All"}, CC.FlingTargetMode, function(v) CC.FlingTargetMode = v end)
     Keybind("Fling Keybind", CC.FlingKeybind, function(k) CC.FlingKeybind = k end)
 
     SectionLabel("АНТИ-ВОИД")
@@ -2017,7 +2069,7 @@ pages["Настройки меню"] = function()
     end)
 end
 
--- Регистрация вкладок
+-- РЕГИСТРАЦИЯ ВКЛАДОК
 AddNavButton("Главная")
 AddNavButton("Читы")
 AddNavButton("Мир")
@@ -2124,7 +2176,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- ЧИТЫ ОБРАБОТКА
+-- ОБРАБОТКА ЧИТОВ
 local CC = CFG.Cheats
 local blinkLastUse = 0
 
@@ -2320,44 +2372,54 @@ local function GetColor(cfg)
     return cfg.Color
 end
 
--- HALO — тонкий круг (плоский диск-кольцо) через Cylinder + вырез
+-- HALO — 12 сегментов в плоское кольцо (НЕ вертолёт)
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
         local char = GetChar()
         if not char then continue end
         local head = char:FindFirstChild("Head")
-        local haloContainer = charFolder:FindFirstChild("HaloContainer")
+        local haloFolder = charFolder:FindFirstChild("HaloFolder")
+
         if CFG.Char.Halo.Enabled and CFG.Master and head then
-            if not haloContainer then
-                haloContainer = Create("Folder", {Name="HaloContainer", Parent=charFolder})
-                -- 4 полоски, собранные в круг (ромбовидное кольцо)
-                for i = 1, 4 do
-                    local seg = Create("Part", {
-                        Name="HaloSeg"..i,
-                        Size=Vector3.new(0.15, 0.15, 2),
-                        Transparency=0,
-                        CanCollide=false, Anchored=true, CanQuery=false,
-                        Massless=true, Material=Enum.Material.Neon,
-                        Color=CFG.Char.Halo.Color,
-                        Parent=haloContainer
+            if not haloFolder then
+                haloFolder = Create("Folder", {Name = "HaloFolder", Parent = charFolder})
+                for i = 1, 12 do
+                    Create("Part", {
+                        Name = "HSeg" .. i,
+                        Shape = Enum.PartType.Block,
+                        Size = Vector3.new(0.35, 0.08, 0.35),
+                        Transparency = 0,
+                        CanCollide = false,
+                        Anchored = true,
+                        CanQuery = false,
+                        Massless = true,
+                        Material = Enum.Material.Neon,
+                        Color = CFG.Char.Halo.Color,
+                        Parent = haloFolder
                     })
                 end
             end
-            local segs = haloContainer:GetChildren()
+
             local s = CFG.Char.Halo.Size
-            local diameter = 3 * s
+            local radius = 1.5 * s
             local angle = (tick() * 80 * CFG.Char.Halo.Speed) % 360
-            local headCF = head.CFrame * CFrame.new(0, 1.8 * s, 0) * CFrame.Angles(0, math.rad(angle), 0)
-            for i, seg in ipairs(segs) do
+            local headCF = head.CFrame
+                * CFrame.new(0, 1.8 * s, 0)
+                * CFrame.Angles(0, math.rad(angle), 0)
+
+            for i, seg in ipairs(haloFolder:GetChildren()) do
                 if seg:IsA("BasePart") then
-                    seg.Size = Vector3.new(0.15, 0.15, diameter * 0.9)
+                    local segAngle = (i - 1) * (2 * math.pi / 12)
+                    seg.Size = Vector3.new(0.35 * s, 0.08, 0.35 * s)
                     seg.Color = GetColor(CFG.Char.Halo)
-                    seg.CFrame = headCF * CFrame.Angles(0, math.rad((i - 1) * 45), 0) * CFrame.new(0, 0, diameter * 0.5)
+                    seg.CFrame = headCF
+                        * CFrame.Angles(0, segAngle, 0)
+                        * CFrame.new(0, 0, radius)
                 end
             end
-        elseif haloContainer then
-            haloContainer:Destroy()
+        elseif haloFolder then
+            haloFolder:Destroy()
         end
     end
 end)
@@ -2413,8 +2475,7 @@ task.spawn(function()
                     Parent=f
                 })
             end
-            local s = 5 * CFG.Char.FireAura.Size + math.sin(tick()*4)*0.5
-            f.Size = Vector3.new(s,s,s)
+            local s = 5 * CFG.Char.FireAura.Size + math.sin(tick()*4)*0.5            f.Size = Vector3.new(s,s,s)
             f.CFrame = CFrame.new(root.Position)
             local pe = f:FindFirstChildOfClass("ParticleEmitter")
             if pe then pe.Rate = CFG.Char.FireAura.Rate end
@@ -2668,6 +2729,176 @@ task.spawn(function()
             p.Rate = CFG.Char.Particles.Rate
             p.Color = ColorSequence.new(GetColor(CFG.Char.Particles))
         elseif p then p:Destroy() end
+    end
+end)
+
+-- PREVIEW VISUALS (крутит камеру + показывает эффекты)
+previewAngle = 0
+task.spawn(function()
+    while gui.Parent do
+        RunService.RenderStepped:Wait()
+        if not previewModel or not menuOpen or CFG.UI.IsMobile then
+            continue
+        end
+
+        previewAngle = (previewAngle + 0.8) % 360
+        if Viewport.CurrentCamera then
+            local cam = Viewport.CurrentCamera
+            local rad = math.rad(previewAngle)
+            cam.CFrame = CFrame.new(
+                Vector3.new(math.sin(rad) * 10, 2, math.cos(rad) * 10),
+                Vector3.new(0, 0, 0)
+            )
+        end
+
+        local previewHead = previewModel:FindFirstChild("Head")
+        local previewRoot = previewModel:FindFirstChild("HumanoidRootPart")
+            or previewModel:FindFirstChild("UpperTorso")
+            or previewModel:FindFirstChild("Torso")
+        if not previewRoot then continue end
+
+        if CFG.Char.Halo.Enabled then
+            local folder = previewModel:FindFirstChild("PHaloFolder")
+            if not folder then
+                folder = Create("Folder", {Name = "PHaloFolder", Parent = previewModel})
+                for i = 1, 12 do
+                    Create("Part", {
+                        Name = "PSeg" .. i, Shape = Enum.PartType.Block,
+                        Size = Vector3.new(0.35, 0.08, 0.35),
+                        CanCollide = false, Anchored = true, CanQuery = false,
+                        Massless = true, Material = Enum.Material.Neon,
+                        Color = CFG.Char.Halo.Color, Parent = folder
+                    })
+                end
+            end
+            if previewHead then
+                local s = CFG.Char.Halo.Size
+                local radius = 1.5 * s
+                local angle = (tick() * 80 * CFG.Char.Halo.Speed) % 360
+                local headCF = previewHead.CFrame
+                    * CFrame.new(0, 1.8 * s, 0)
+                    * CFrame.Angles(0, math.rad(angle), 0)
+                for i, seg in ipairs(folder:GetChildren()) do
+                    if seg:IsA("BasePart") then
+                        local segAngle = (i - 1) * (2 * math.pi / 12)
+                        seg.Size = Vector3.new(0.35 * s, 0.08, 0.35 * s)
+                        seg.Color = GetColor(CFG.Char.Halo)
+                        seg.CFrame = headCF * CFrame.Angles(0, segAngle, 0) * CFrame.new(0, 0, radius)
+                    end
+                end
+            end
+        else
+            local folder = previewModel:FindFirstChild("PHaloFolder")
+            if folder then folder:Destroy() end
+        end
+
+        if CFG.Char.Aura.Enabled then
+            local aura = previewModel:FindFirstChild("PAura")
+            if not aura then
+                aura = Create("Part", {
+                    Name = "PAura", Shape = Enum.PartType.Ball,
+                    Size = Vector3.new(5,5,5),
+                    Transparency = CFG.Char.Aura.Transp,
+                    CanCollide = false, Anchored = true, CanQuery = false,
+                    Material = Enum.Material.ForceField,
+                    Color = CFG.Char.Aura.Color, Parent = previewModel
+                })
+            end
+            local bs = 5 * CFG.Char.Aura.Size
+            if CFG.Char.Aura.Pulse then bs = bs + math.sin(tick()*3)*0.4 end
+            aura.Size = Vector3.new(bs,bs,bs)
+            aura.CFrame = previewRoot.CFrame
+            aura.Color = GetColor(CFG.Char.Aura)
+            aura.Transparency = CFG.Char.Aura.Transp
+        else
+            local aura = previewModel:FindFirstChild("PAura")
+            if aura then aura:Destroy() end
+        end
+
+        if CFG.Char.Chams.Enabled then
+            local hl = previewModel:FindFirstChild("PChams")
+            if not hl then
+                hl = Create("Highlight", {
+                    Name = "PChams", Adornee = previewModel,
+                    FillTransparency = CFG.Char.Chams.Transp,
+                    OutlineTransparency = 1,
+                    FillColor = CFG.Char.Chams.Color, Parent = previewModel
+                })
+            end
+            hl.FillColor = GetColor(CFG.Char.Chams)
+            hl.FillTransparency = CFG.Char.Chams.Transp
+        else
+            local hl = previewModel:FindFirstChild("PChams")
+            if hl then hl:Destroy() end
+        end
+
+        if CFG.Char.Outline.Enabled then
+            local hl = previewModel:FindFirstChild("POutline")
+            if not hl then
+                hl = Create("Highlight", {
+                    Name = "POutline", Adornee = previewModel,
+                    FillTransparency = 1, OutlineTransparency = 0,
+                    OutlineColor = CFG.Char.Outline.Color, Parent = previewModel
+                })
+            end
+            hl.OutlineColor = GetColor(CFG.Char.Outline)
+        else
+            local hl = previewModel:FindFirstChild("POutline")
+            if hl then hl:Destroy() end
+        end
+
+        if CFG.Char.Ring.Enabled then
+            local ring = previewModel:FindFirstChild("PRing")
+            if not ring then
+                ring = Create("Part", {
+                    Name = "PRing", Shape = Enum.PartType.Cylinder,
+                    Size = Vector3.new(0.2, 6, 6), Transparency = 0.2,
+                    CanCollide = false, Anchored = true, CanQuery = false,
+                    Material = Enum.Material.Neon,
+                    Color = CFG.Char.Ring.Color, Parent = previewModel
+                })
+            end
+            local s = CFG.Char.Ring.Size
+            ring.Size = Vector3.new(0.2, s, s)
+            local ang = (tick() * 60 * CFG.Char.Ring.Speed) % 360
+            ring.CFrame = CFrame.new(previewRoot.Position - Vector3.new(0, 2.9, 0))
+                * CFrame.Angles(0, math.rad(ang), math.rad(90))
+            ring.Color = GetColor(CFG.Char.Ring)
+        else
+            local ring = previewModel:FindFirstChild("PRing")
+            if ring then ring:Destroy() end
+        end
+
+        if CFG.Char.Orbs.Enabled then
+            local folder = previewModel:FindFirstChild("POrbsFolder")
+            if not folder then
+                folder = Create("Folder", {Name = "POrbsFolder", Parent = previewModel})
+            end
+            local count = CFG.Char.Orbs.Count
+            local kids = folder:GetChildren()
+            while #kids < count do
+                Create("Part", {Name = "POrb", Shape = Enum.PartType.Ball,
+                    Size = Vector3.new(0.6, 0.6, 0.6), Material = Enum.Material.Neon,
+                    CanCollide = false, Anchored = true, CanQuery = false, Parent = folder})
+                kids = folder:GetChildren()
+            end
+            while #kids > count do kids[#kids]:Destroy(); kids = folder:GetChildren() end
+            local t = tick() * CFG.Char.Orbs.Speed
+            for i, orb in ipairs(folder:GetChildren()) do
+                local a = t + (i * math.pi * 2 / count)
+                local off = Vector3.new(
+                    math.cos(a) * CFG.Char.Orbs.Radius,
+                    1.5 + math.sin(t + i) * 0.5,
+                    math.sin(a) * CFG.Char.Orbs.Radius
+                )
+                orb.Size = Vector3.new(CFG.Char.Orbs.Size, CFG.Char.Orbs.Size, CFG.Char.Orbs.Size)
+                orb.CFrame = CFrame.new(previewRoot.Position + off)
+                orb.Color = GetColor(CFG.Char.Orbs)
+            end
+        else
+            local folder = previewModel:FindFirstChild("POrbsFolder")
+            if folder then folder:Destroy() end
+        end
     end
 end)
 
