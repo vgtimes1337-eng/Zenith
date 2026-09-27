@@ -139,6 +139,19 @@ local function PlaySound(id, vol)
 end
 local function Click() PlaySound(CFG.UI.ClickSound, 0.3) end
 
+-- УНИВЕРСАЛЬНЫЙ КЛИК (мышь + тап)
+local function AddClick(btn, cb)
+    local tapped = false
+    btn.MouseButton1Click:Connect(function()
+        if tapped then tapped = false; return end
+        SafeCall(cb)
+    end)
+    btn.TouchTap:Connect(function()
+        tapped = true
+        SafeCall(cb)
+    end)
+end
+
 function _G.ZenithAccent()
     return CFG.UI.Accent or Color3.fromRGB(255,255,255)
 end
@@ -332,7 +345,6 @@ local function ShowWelcomeScreen(callback)
         BackgroundTransparency=1, BorderSizePixel=0, Parent=welcomeGui
     })
 
-    -- Логотип Z (внутри круга)
     local logoCircle = Create("Frame", {
         Size=UDim2.new(0,80,0,80), Position=UDim2.new(0.5,-40,0.5,-140),
         BackgroundColor3=Theme.Accent, BorderSizePixel=0,
@@ -345,7 +357,6 @@ local function ShowWelcomeScreen(callback)
         TextSize=46, TextTransparency=1, Parent=logoCircle
     })
 
-    -- Основной текст приветствия
     local welcomeText = Create("TextLabel", {
         Size=UDim2.new(1,0,0,60), Position=UDim2.new(0,0,0.5,-10),
         BackgroundTransparency=1,
@@ -362,7 +373,6 @@ local function ShowWelcomeScreen(callback)
         TextTransparency=1, Parent=bg
     })
 
-    -- Анимация появления
     Tween(bg, 0.5, {BackgroundTransparency=0})
     Tween(logoCircle, 0.5, {BackgroundTransparency=0})
     task.wait(0.15)
@@ -372,7 +382,6 @@ local function ShowWelcomeScreen(callback)
     task.wait(0.15)
     Tween(subText, 0.5, {TextTransparency=0})
 
-    -- Пауза и исчезновение
     task.wait(1.8)
     Tween(welcomeText, 0.4, {TextTransparency=1})
     Tween(subText, 0.4, {TextTransparency=1})
@@ -540,17 +549,14 @@ local function FinalizePlatform(platform)
     Tween(PCenter, 0.4, {BackgroundTransparency=1})
     task.delay(0.5, function()
         PlatformGui:Destroy()
-        -- Показываем приветствие
         ShowWelcomeScreen(function()
             if _G.ZenithEmpireOnPlatformChosen then _G.ZenithEmpireOnPlatformChosen(platform) end
         end)
     end)
 end
 
-PCButton.MouseButton1Click:Connect(function() FinalizePlatform("PC") end)
-MobileButton.MouseButton1Click:Connect(function() FinalizePlatform("Mobile") end)
-PCButton.TouchTap:Connect(function() FinalizePlatform("PC") end)
-MobileButton.TouchTap:Connect(function() FinalizePlatform("Mobile") end)
+AddClick(PCButton, function() FinalizePlatform("PC") end)
+AddClick(MobileButton, function() FinalizePlatform("Mobile") end)
 -- LOADING
 local loadingFrame = Create("Frame", {
     Size=UDim2.new(1,0,1,0), BackgroundColor3=Color3.fromRGB(8,8,10),
@@ -582,7 +588,7 @@ local lbF = Create("Frame", {
 })
 Corner(lbF, 2)
 
--- MAIN
+-- MAIN (размеры динамические)
 local WIN_W, WIN_H = 700, 430
 local NAV_W = 155
 local TOP_H = 44
@@ -663,9 +669,8 @@ local closeBtn = Create("TextButton", {
 Corner(closeBtn, 7)
 closeBtn.MouseEnter:Connect(function() Tween(closeBtn, 0.15, {BackgroundColor3=Theme.Danger, TextColor3=Color3.fromRGB(255,255,255)}) end)
 closeBtn.MouseLeave:Connect(function() Tween(closeBtn, 0.15, {BackgroundColor3=Theme.Element, TextColor3=Theme.TextDim}) end)
-closeBtn.MouseButton1Click:Connect(function() Click(); _G.ZenithEmpireSetMenuOpen(false) end)
+AddClick(closeBtn, function() Click(); _G.ZenithEmpireSetMenuOpen(false) end)
 
--- Mobile menu button
 local mobileMenuBtn = Create("TextButton", {
     Name="MobileMenuBtn",
     Size=UDim2.new(0,50,0,50), Position=UDim2.new(0,20,0.5,-25),
@@ -675,14 +680,7 @@ local mobileMenuBtn = Create("TextButton", {
 })
 Corner(mobileMenuBtn, 25)
 Stroke(mobileMenuBtn, Theme.Accent, 1.5)
-mobileMenuBtn.MouseButton1Click:Connect(function()
-    Click()
-    _G.ZenithEmpireSetMenuOpen(not menuOpen)
-end)
-mobileMenuBtn.TouchTap:Connect(function()
-    Click()
-    _G.ZenithEmpireSetMenuOpen(not menuOpen)
-end)
+AddClick(mobileMenuBtn, function() Click(); _G.ZenithEmpireSetMenuOpen(not menuOpen) end)
 
 local Nav = Create("Frame", {
     Size=UDim2.new(0,NAV_W,1,-TOP_H-16), Position=UDim2.new(0,12,0,TOP_H+6),
@@ -742,7 +740,6 @@ Create("TextLabel", {
     ZIndex=51, Parent=Main
 })
 
--- PREVIEW
 PreviewGroup = Create("CanvasGroup", {
     Name="PreviewGroup", Size=UDim2.new(0,220,0,WIN_H),
     Position=UDim2.new(0.5,WIN_W/2+10,0.5,-WIN_H/2),
@@ -799,7 +796,7 @@ local palClose = Create("TextButton", {
     AutoButtonColor=false, ZIndex=201, Parent=Palette
 })
 Corner(palClose, 6)
-palClose.MouseButton1Click:Connect(function() Palette.Visible=false end)
+AddClick(palClose, function() Palette.Visible=false end)
 
 local swatchColors = {
     Color3.fromRGB(255,255,255), Color3.fromRGB(220,220,220), Color3.fromRGB(180,180,180),
@@ -819,12 +816,7 @@ local palCallback
 for _, col in ipairs(swatchColors) do
     local sw = Create("TextButton", {BackgroundColor3=col, Text="", AutoButtonColor=false, ZIndex=202, Parent=pickRow})
     Corner(sw, 6); Stroke(sw, Theme.Stroke, 1)
-    sw.MouseButton1Click:Connect(function()
-        Click()
-        if palCallback then palCallback(col) end
-        Palette.Visible=false
-    end)
-    sw.TouchTap:Connect(function()
+    AddClick(sw, function()
         Click()
         if palCallback then palCallback(col) end
         Palette.Visible=false
@@ -902,15 +894,22 @@ local function OpenPalette(initial, cb)
     Palette.Visible = true
 end
 
--- WIDGETS
+-- WIDGETS (С ПОДДЕРЖКОЙ МОБИЛЬНОГО РАЗМЕРА)
 local toggleRefs = {}
 local sliderRefs = {}
 
+-- Динамические размеры в зависимости от платформы
+local function rowH() return CFG.UI.IsMobile and 22 or 32 end
+local function txtSz() return CFG.UI.IsMobile and 10 or 13 end
+local function txtSm() return CFG.UI.IsMobile and 8 or 10 end
+local function sliderH() return CFG.UI.IsMobile and 32 or 46 end
+local function sectionH() return CFG.UI.IsMobile and 14 or 18 end
+
 local function SectionLabel(text)
     Create("TextLabel", {
-        Size=UDim2.new(1,-4,0,18), BackgroundTransparency=1,
+        Size=UDim2.new(1,-4,0,sectionH()), BackgroundTransparency=1,
         Text=text, TextColor3=Theme.TextMuted,
-        Font=Enum.Font.GothamBold, TextSize=10,
+        Font=Enum.Font.GothamBold, TextSize=txtSm(),
         TextXAlignment=Enum.TextXAlignment.Left, Parent=Scroll
     })
 end
@@ -918,7 +917,7 @@ end
 local function Toggle(text, default, callback)
     local state = default or false
     local btn = Create("TextButton", {
-        Size=UDim2.new(1,-8,0,32), BackgroundColor3=Theme.Element,
+        Size=UDim2.new(1,-8,0,rowH()), BackgroundColor3=Theme.Element,
         Text="", AutoButtonColor=false, Parent=Scroll
     })
     Corner(btn, 8)
@@ -926,7 +925,7 @@ local function Toggle(text, default, callback)
     Create("TextLabel", {
         Size=UDim2.new(1,-60,1,0), Position=UDim2.new(0,14,0,0),
         BackgroundTransparency=1, Text=text, TextColor3=Theme.Text,
-        Font=Enum.Font.GothamMedium, TextSize=13,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz(),
         TextXAlignment=Enum.TextXAlignment.Left, Parent=btn
     })
     local track = Create("Frame", {
@@ -965,33 +964,32 @@ local function Toggle(text, default, callback)
         track.BackgroundColor3 = state and accent or Color3.fromRGB(60,60,68)
     end
     table.insert(toggleRefs, {track=track, refresh=refresh})
-    btn.MouseButton1Click:Connect(function() set(not state); Click() end)
-    btn.TouchTap:Connect(function() set(not state); Click() end)
+    AddClick(btn, function() set(not state); Click() end)
     return {set=set, get=function() return state end}
 end
 
 local function Slider(text, min, max, default, callback)
     local val = default or min
     local frame = Create("Frame", {
-        Size=UDim2.new(1,-8,0,46), BackgroundColor3=Theme.Element, Parent=Scroll
+        Size=UDim2.new(1,-8,0,sliderH()), BackgroundColor3=Theme.Element, Parent=Scroll
     })
     Corner(frame, 8)
     Stroke(frame, Theme.Stroke, 1)
     Create("TextLabel", {
         Size=UDim2.new(1,-100,0,18), Position=UDim2.new(0,14,0,5),
         BackgroundTransparency=1, Text=text, TextColor3=Theme.Text,
-        Font=Enum.Font.GothamMedium, TextSize=13,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz(),
         TextXAlignment=Enum.TextXAlignment.Left, Parent=frame
     })
     local valueLbl = Create("TextLabel", {
         Size=UDim2.new(0,70,0,18), Position=UDim2.new(1,-80,0,5),
         BackgroundTransparency=1, Text=tostring(val),
         TextColor3=Theme.Accent2,
-        Font=Enum.Font.GothamMedium, TextSize=12,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz()-1,
         TextXAlignment=Enum.TextXAlignment.Right, Parent=frame
     })
     local track = Create("Frame", {
-        Size=UDim2.new(1,-28,0,8), Position=UDim2.new(0,14,1,-18),
+        Size=UDim2.new(1,-28,0,8), Position=UDim2.new(0,14,1,-14),
         BackgroundColor3=Color3.fromRGB(50,50,58),
         BorderSizePixel=0, Parent=frame
     })
@@ -1035,9 +1033,9 @@ end
 
 local function Button(text, callback)
     local btn = Create("TextButton", {
-        Size=UDim2.new(1,-8,0,32), BackgroundColor3=Theme.Element,
+        Size=UDim2.new(1,-8,0,rowH()), BackgroundColor3=Theme.Element,
         Text=text, TextColor3=Theme.Text,
-        Font=Enum.Font.GothamMedium, TextSize=13,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz(),
         AutoButtonColor=false, Parent=Scroll
     })
     Corner(btn, 8)
@@ -1050,8 +1048,7 @@ local function Button(text, callback)
         Tween(btn, 0.12, {BackgroundColor3=Theme.Element})
         Tween(s, 0.12, {Color=Theme.Stroke})
     end)
-    btn.MouseButton1Click:Connect(function() Click(); SafeCall(callback) end)
-    btn.TouchTap:Connect(function() Click(); SafeCall(callback) end)
+    AddClick(btn, function() Click(); SafeCall(callback) end)
     return btn
 end
 
@@ -1059,29 +1056,27 @@ local function Keybind(text, defaultKey, callback)
     if CFG.UI.IsMobile then
         local state = false
         local btn = Create("TextButton", {
-            Size=UDim2.new(1,-8,0,40), BackgroundColor3=Theme.Element,
+            Size=UDim2.new(1,-8,0,rowH()+8), BackgroundColor3=Theme.Element,
             Text=text .. ": OFF", TextColor3=Theme.Text,
-            Font=Enum.Font.GothamBold, TextSize=13,
+            Font=Enum.Font.GothamBold, TextSize=txtSz(),
             AutoButtonColor=false, Parent=Scroll
         })
         Corner(btn, 8)
         Stroke(btn, Theme.Stroke, 1)
-        local function flip()
+        AddClick(btn, function()
             state = not state
             btn.Text = text .. ": " .. (state and "ON" or "OFF")
             btn.BackgroundColor3 = state and _G.ZenithAccent() or Theme.Element
             btn.TextColor3 = state and Theme.Bg or Theme.Text
             Click()
             SafeCall(callback, state)
-        end
-        btn.MouseButton1Click:Connect(flip)
-        btn.TouchTap:Connect(flip)
+        end)
         return function() return state end
     end
 
     local currentKey = defaultKey
     local btn = Create("TextButton", {
-        Size=UDim2.new(1,-8,0,32), BackgroundColor3=Theme.Element,
+        Size=UDim2.new(1,-8,0,rowH()), BackgroundColor3=Theme.Element,
         Text="", AutoButtonColor=false, Parent=Scroll
     })
     Corner(btn, 8)
@@ -1089,18 +1084,18 @@ local function Keybind(text, defaultKey, callback)
     Create("TextLabel", {
         Size=UDim2.new(1,-100,1,0), Position=UDim2.new(0,14,0,0),
         BackgroundTransparency=1, Text=text, TextColor3=Theme.Text,
-        Font=Enum.Font.GothamMedium, TextSize=13,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz(),
         TextXAlignment=Enum.TextXAlignment.Left, Parent=btn
     })
     local valLbl = Create("TextLabel", {
         Size=UDim2.new(0,80,1,0), Position=UDim2.new(1,-90,0,0),
         BackgroundTransparency=1, Text=currentKey and currentKey.Name or "None",
         TextColor3=Theme.Accent2,
-        Font=Enum.Font.GothamMedium, TextSize=12,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz()-1,
         TextXAlignment=Enum.TextXAlignment.Right, Parent=btn
     })
     local listening = false
-    btn.MouseButton1Click:Connect(function() listening=true; valLbl.Text="..." end)
+    AddClick(btn, function() listening=true; valLbl.Text="..." end)
     UserInputService.InputBegan:Connect(function(input, gpe)
         if not listening then return end
         if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -1115,7 +1110,7 @@ end
 
 local function ColorPicker(text, defaultColor, callback)
     local btn = Create("TextButton", {
-        Size=UDim2.new(1,-8,0,32), BackgroundColor3=Theme.Element,
+        Size=UDim2.new(1,-8,0,rowH()), BackgroundColor3=Theme.Element,
         Text="", AutoButtonColor=false, Parent=Scroll
     })
     Corner(btn, 8)
@@ -1123,7 +1118,7 @@ local function ColorPicker(text, defaultColor, callback)
     Create("TextLabel", {
         Size=UDim2.new(1,-70,1,0), Position=UDim2.new(0,14,0,0),
         BackgroundTransparency=1, Text=text, TextColor3=Theme.Text,
-        Font=Enum.Font.GothamMedium, TextSize=13,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz(),
         TextXAlignment=Enum.TextXAlignment.Left, Parent=btn
     })
     local sw = Create("Frame", {
@@ -1135,22 +1130,20 @@ local function ColorPicker(text, defaultColor, callback)
     Stroke(sw, Theme.Stroke, 1)
     btn.MouseEnter:Connect(function() Tween(btn, 0.12, {BackgroundColor3=Theme.ElementHov}) end)
     btn.MouseLeave:Connect(function() Tween(btn, 0.12, {BackgroundColor3=Theme.Element}) end)
-    local function open()
+    AddClick(btn, function()
         Click()
         OpenPalette(sw.BackgroundColor3, function(c)
             sw.BackgroundColor3 = c
             SafeCall(callback, c)
         end)
-    end
-    btn.MouseButton1Click:Connect(open)
-    btn.TouchTap:Connect(open)
+    end)
     return {set=function(c) sw.BackgroundColor3=c end}
 end
 
 local function Dropdown(text, options, default, callback)
     local current = default or options[1]
     local btn = Create("TextButton", {
-        Size=UDim2.new(1,-8,0,32), BackgroundColor3=Theme.Element,
+        Size=UDim2.new(1,-8,0,rowH()), BackgroundColor3=Theme.Element,
         Text="", AutoButtonColor=false, Parent=Scroll
     })
     Corner(btn, 8)
@@ -1158,14 +1151,14 @@ local function Dropdown(text, options, default, callback)
     Create("TextLabel", {
         Size=UDim2.new(1,-100,1,0), Position=UDim2.new(0,14,0,0),
         BackgroundTransparency=1, Text=text, TextColor3=Theme.Text,
-        Font=Enum.Font.GothamMedium, TextSize=13,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz(),
         TextXAlignment=Enum.TextXAlignment.Left, Parent=btn
     })
     local valLbl = Create("TextLabel", {
         Size=UDim2.new(0,80,1,0), Position=UDim2.new(1,-90,0,0),
         BackgroundTransparency=1, Text=tostring(current),
         TextColor3=Theme.Accent2,
-        Font=Enum.Font.GothamMedium, TextSize=12,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz()-1,
         TextXAlignment=Enum.TextXAlignment.Right, Parent=btn
     })
 
@@ -1178,18 +1171,17 @@ local function Dropdown(text, options, default, callback)
     Stroke(list, Theme.StrokeHov, 1)
     Create("UIListLayout", {Padding=UDim.new(0,2), Parent=list})
 
-    local isOpen = false
-    for i, opt in ipairs(options) do
+    local isOpen = false    for i, opt in ipairs(options) do
         local optBtn = Create("TextButton", {
-            Size=UDim2.new(1,-8,0,28), BackgroundColor3=Theme.Element,
+            Size=UDim2.new(1,-8,0,rowH()-4), BackgroundColor3=Theme.Element,
             Text=tostring(opt), TextColor3=Theme.Text,
-            Font=Enum.Font.GothamMedium, TextSize=12,
+            Font=Enum.Font.GothamMedium, TextSize=txtSz()-1,
             AutoButtonColor=false, LayoutOrder=i, Parent=list
         })
         Corner(optBtn, 6)
         optBtn.MouseEnter:Connect(function() Tween(optBtn, 0.1, {BackgroundColor3=Theme.ElementHov}) end)
         optBtn.MouseLeave:Connect(function() Tween(optBtn, 0.1, {BackgroundColor3=Theme.Element}) end)
-        local function pick()
+        AddClick(optBtn, function()
             current = opt
             valLbl.Text = tostring(opt)
             isOpen = false
@@ -1197,15 +1189,13 @@ local function Dropdown(text, options, default, callback)
             task.delay(0.15, function() list.Visible = false end)
             Click()
             SafeCall(callback, opt)
-        end
-        optBtn.MouseButton1Click:Connect(pick)
-        optBtn.TouchTap:Connect(pick)
+        end)
     end
 
-    local function toggle()
+    AddClick(btn, function()
         isOpen = not isOpen
         if isOpen then
-            local h = #options * 30 + 6
+            local h = #options * (rowH() - 2) + 6
             list.Visible = true
             Tween(list, 0.15, {Size=UDim2.new(1,0,0,h)})
         else
@@ -1213,9 +1203,7 @@ local function Dropdown(text, options, default, callback)
             task.delay(0.15, function() list.Visible = false end)
         end
         Click()
-    end
-    btn.MouseButton1Click:Connect(toggle)
-    btn.TouchTap:Connect(toggle)
+    end)
 
     return {set=function(v) current = v; valLbl.Text = tostring(v) end}
 end
@@ -1329,7 +1317,7 @@ local function WatchCharacter(char)
 end
 if LocalPlayer.Character then WatchCharacter(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(function(c) task.wait(1); WatchCharacter(c); BuildPreview() end)
-refreshBtn.MouseButton1Click:Connect(function() Click(); BuildPreview(); Notify("Превью обновлено", Theme.Success) end)
+AddClick(refreshBtn, function() Click(); BuildPreview(); Notify("Превью обновлено", Theme.Success) end)
 
 -- PAGES
 local pages = {}
@@ -1344,7 +1332,7 @@ end
 
 local function AddNavButton(name)
     local btn = Create("TextButton", {
-        Size=UDim2.new(1,0,0,30), BackgroundColor3=Theme.Panel,
+        Size=UDim2.new(1,0,0,CFG.UI.IsMobile and 22 or 30), BackgroundColor3=Theme.Panel,
         BackgroundTransparency=1, Text="", AutoButtonColor=false, Parent=NavHolder
     })
     Corner(btn, 8)
@@ -1357,7 +1345,7 @@ local function AddNavButton(name)
     local label = Create("TextLabel", {
         Size=UDim2.new(1,-20,1,0), Position=UDim2.new(0,14,0,0),
         BackgroundTransparency=1, Text=name, TextColor3=Theme.TextDim,
-        Font=Enum.Font.GothamMedium, TextSize=13,
+        Font=Enum.Font.GothamMedium, TextSize=CFG.UI.IsMobile and 10 or 13,
         TextXAlignment=Enum.TextXAlignment.Left, Parent=btn
     })
     btn.MouseEnter:Connect(function()
@@ -1368,7 +1356,7 @@ local function AddNavButton(name)
     btn.MouseLeave:Connect(function()
         if currentPage ~= name then Tween(btn, 0.15, {BackgroundTransparency=1}) end
     end)
-    local function switch()
+    AddClick(btn, function()
         if currentPage == name then return end
         Click()
         currentPage = name
@@ -1384,9 +1372,7 @@ local function AddNavButton(name)
         end
         ClearScroll()
         if pages[name] then pages[name]() end
-    end
-    btn.MouseButton1Click:Connect(switch)
-    btn.TouchTap:Connect(switch)
+    end)
     navButtons[name] = {btn=btn, accent=accent, label=label}
 end
 
@@ -1888,24 +1874,24 @@ pages["Профили"] = function()
     }
     for _, preset in ipairs(presets) do
         local row = Create("Frame", {
-            Size=UDim2.new(1,-8,0,32), BackgroundColor3=Theme.Element, Parent=Scroll
+            Size=UDim2.new(1,-8,0,rowH()), BackgroundColor3=Theme.Element, Parent=Scroll
         })
         Corner(row, 8)
         Stroke(row, Theme.Stroke, 1)
         Create("TextLabel", {
             Size=UDim2.new(0.5,-10,1,0), Position=UDim2.new(0,10,0,0),
             BackgroundTransparency=1, Text=preset, TextColor3=Theme.Text,
-            Font=Enum.Font.GothamMedium, TextSize=13,
+            Font=Enum.Font.GothamMedium, TextSize=txtSz(),
             TextXAlignment=Enum.TextXAlignment.Left, Parent=row
         })
         local saveBtn = Create("TextButton", {
             Size=UDim2.new(0,60,1,-8), Position=UDim2.new(1,-130,0,4),
             BackgroundColor3=_G.ZenithAccent(), Text="Save",
-            TextColor3=Theme.Bg, Font=Enum.Font.GothamMedium, TextSize=11,
+            TextColor3=Theme.Bg, Font=Enum.Font.GothamMedium, TextSize=txtSz()-2,
             AutoButtonColor=false, Parent=row
         })
         Corner(saveBtn, 5)
-        saveBtn.MouseButton1Click:Connect(function()
+        AddClick(saveBtn, function()
             Click()
             local ok, msg = SaveConfig(preset)
             Notify(msg, ok and Theme.Success or Theme.Danger)
@@ -1913,11 +1899,11 @@ pages["Профили"] = function()
         local loadBtn = Create("TextButton", {
             Size=UDim2.new(0,60,1,-8), Position=UDim2.new(1,-65,0,4),
             BackgroundColor3=Theme.ElementHov, Text="Load",
-            TextColor3=Theme.Text, Font=Enum.Font.GothamMedium, TextSize=11,
+            TextColor3=Theme.Text, Font=Enum.Font.GothamMedium, TextSize=txtSz()-2,
             AutoButtonColor=false, Parent=row
         })
         Corner(loadBtn, 5)
-        loadBtn.MouseButton1Click:Connect(function()
+        AddClick(loadBtn, function()
             Click()
             local ok, msg = LoadConfig(preset)
             Notify(msg, ok and Theme.Success or Theme.Danger)
@@ -1929,7 +1915,7 @@ end
 pages["Конфиги"] = function()
     SectionLabel("УПРАВЛЕНИЕ")
     local nameRow = Create("Frame", {
-        Size=UDim2.new(1,-8,0,32), BackgroundColor3=Theme.Element, Parent=Scroll
+        Size=UDim2.new(1,-8,0,rowH()), BackgroundColor3=Theme.Element, Parent=Scroll
     })
     Corner(nameRow, 8)
     Stroke(nameRow, Theme.Stroke, 1)
@@ -1939,7 +1925,7 @@ pages["Конфиги"] = function()
         PlaceholderText="Введите имя конфига...",
         Text="",
         TextColor3=Theme.Text,
-        Font=Enum.Font.GothamMedium, TextSize=12,
+        Font=Enum.Font.GothamMedium, TextSize=txtSz()-1,
         ClearTextOnFocus=false, Parent=nameRow
     })
     Corner(nameBox, 5)
@@ -1964,7 +1950,7 @@ pages["Конфиги"] = function()
             Size=UDim2.new(1,-8,0,60), BackgroundColor3=Theme.Element,
             Text="Пока нет сохранённых конфигов\nСохрани первый через кнопку выше",
             TextColor3=Theme.TextMuted,
-            Font=Enum.Font.GothamMedium, TextSize=12,
+            Font=Enum.Font.GothamMedium, TextSize=txtSz()-1,
             TextWrapped=true, Parent=Scroll
         })
         Corner(emptyLabel, 8)
@@ -1984,7 +1970,7 @@ pages["Конфиги"] = function()
             BackgroundTransparency=1,
             Text=(active and "[ACTIVE] " or "[" .. idx .. "] ") .. cfgName,
             TextColor3=active and _G.ZenithAccent() or Theme.Text,
-            Font=Enum.Font.GothamBold, TextSize=13,
+            Font=Enum.Font.GothamBold, TextSize=txtSz(),
             TextXAlignment=Enum.TextXAlignment.Left, Parent=card
         })
 
@@ -1996,7 +1982,7 @@ pages["Конфиги"] = function()
                 AutoButtonColor=false, Parent=card
             })
             Corner(b, 5)
-            b.MouseButton1Click:Connect(function() Click(); cb() end)
+            AddClick(b, cb)
             return b
         end
 
@@ -2031,12 +2017,6 @@ pages["Настройки"] = function()
     Toggle("FPS Counter", CFG.FPS, function(v) CFG.FPS = v end)
     Toggle("Ping Display", CFG.Ping, function(v) CFG.Ping = v end)
     Toggle("Memory Usage", CFG.Memory, function(v) CFG.Memory = v end)
-    SectionLabel("ПЛАТФОРМА")
-    Button("Перезапустить выбор платформы", function()
-        CFG.UI.Platform = nil
-        CFG.UI.IsMobile = false
-        Notify("Платформа сброшена. Перезапусти скрипт.", Theme.Success)
-    end)
 end
 
 -- НАСТРОЙКИ МЕНЮ
@@ -2069,7 +2049,7 @@ pages["Настройки меню"] = function()
     end)
 end
 
--- РЕГИСТРАЦИЯ ВКЛАДОК
+-- РЕГИСТРАЦИЯ
 AddNavButton("Главная")
 AddNavButton("Читы")
 AddNavButton("Мир")
@@ -2125,25 +2105,37 @@ end
 
 _G.ZenithEmpireOnPlatformChosen = function(platform)
     if platform == "Mobile" then
-        WIN_W, WIN_H = 380, 620
-        NAV_W = 110
-        TOP_H = 40
+        -- Меню в 2 раза меньше ПК
+        WIN_W, WIN_H = 350, 215
+        NAV_W = 78
+        TOP_H = 22
+
         MainGroup.Size = UDim2.new(0, WIN_W, 0, WIN_H)
         MainGroup.Position = UDim2.new(0.5, -WIN_W/2, 0.5, -WIN_H/2)
-        Nav.Size = UDim2.new(0, NAV_W, 1, -TOP_H - 16)
-        Content.Size = UDim2.new(1, -NAV_W - 24, 1, -TOP_H - 16)
-        Content.Position = UDim2.new(0, NAV_W + 18, 0, TOP_H + 6)
+
+        Nav.Size = UDim2.new(0, NAV_W, 1, -TOP_H - 8)
+        Nav.Position = UDim2.new(0, 6, 0, TOP_H + 4)
+        Content.Size = UDim2.new(1, -NAV_W - 12, 1, -TOP_H - 8)
+        Content.Position = UDim2.new(0, NAV_W + 10, 0, TOP_H + 4)
+
         PreviewGroup.Visible = false
         PreviewGroup.Size = UDim2.new(0, 0, 0, 0)
+
         mobileMenuBtn.Visible = true
+        mobileMenuBtn.Size = UDim2.new(0, 42, 0, 42)
+        mobileMenuBtn.Position = UDim2.new(0, 12, 0.5, -21)
+        mobileMenuBtn.TextSize = 18
+
+        if MobileBindPanel then MobileBindPanel.Visible = true end
     else
         mobileMenuBtn.Visible = false
+        if MobileBindPanel then MobileBindPanel.Visible = false end
     end
     task.wait(0.4)
     _G.ZenithEmpireSetMenuOpen(true)
     task.wait(0.6)
     if platform == "Mobile" then
-        Notify("Тапни Z-кнопку слева, чтобы открыть меню", Theme.Accent2)
+        Notify("Тапни Z-кнопку слева", Theme.Accent2)
     else
         Notify("RightShift - открыть меню", Theme.Accent2)
     end
@@ -2372,7 +2364,7 @@ local function GetColor(cfg)
     return cfg.Color
 end
 
--- HALO — 12 сегментов в плоское кольцо (НЕ вертолёт)
+-- HALO — 12 сегментов плоского кольца
 task.spawn(function()
     while gui.Parent do
         RunService.Heartbeat:Wait()
@@ -2400,14 +2392,12 @@ task.spawn(function()
                     })
                 end
             end
-
             local s = CFG.Char.Halo.Size
             local radius = 1.5 * s
             local angle = (tick() * 80 * CFG.Char.Halo.Speed) % 360
             local headCF = head.CFrame
                 * CFrame.new(0, 1.8 * s, 0)
                 * CFrame.Angles(0, math.rad(angle), 0)
-
             for i, seg in ipairs(haloFolder:GetChildren()) do
                 if seg:IsA("BasePart") then
                     local segAngle = (i - 1) * (2 * math.pi / 12)
@@ -2475,7 +2465,8 @@ task.spawn(function()
                     Parent=f
                 })
             end
-            local s = 5 * CFG.Char.FireAura.Size + math.sin(tick()*4)*0.5            f.Size = Vector3.new(s,s,s)
+            local s = 5 * CFG.Char.FireAura.Size + math.sin(tick()*4)*0.5
+            f.Size = Vector3.new(s,s,s)
             f.CFrame = CFrame.new(root.Position)
             local pe = f:FindFirstChildOfClass("ParticleEmitter")
             if pe then pe.Rate = CFG.Char.FireAura.Rate end
@@ -2732,14 +2723,12 @@ task.spawn(function()
     end
 end)
 
--- PREVIEW VISUALS (крутит камеру + показывает эффекты)
+-- PREVIEW VISUALS (крутит камеру + эффекты на превью)
 previewAngle = 0
 task.spawn(function()
     while gui.Parent do
         RunService.RenderStepped:Wait()
-        if not previewModel or not menuOpen or CFG.UI.IsMobile then
-            continue
-        end
+        if not previewModel or not menuOpen or CFG.UI.IsMobile then continue end
 
         previewAngle = (previewAngle + 0.8) % 360
         if Viewport.CurrentCamera then
@@ -3051,6 +3040,149 @@ task.spawn(function()
         if CFG.Memory then table.insert(parts, "MEM: " .. math.floor(collectgarbage("count") / 1024) .. "MB") end
         perfLabel.Text = table.concat(parts, "  |  ")
         task.wait(0.5)
+    end
+end)
+
+-- MOBILE BIND PANEL
+local MobileBindPanel = Create("Frame", {
+    Name = "MobileBindPanel",
+    Size = UDim2.new(0, 140, 0, 200),
+    Position = UDim2.new(1, -150, 1, -210),
+    BackgroundTransparency = 1,
+    Visible = false,
+    ZIndex = 400,
+    Parent = gui
+})
+Create("UIListLayout", {
+    FillDirection = Enum.FillDirection.Vertical,
+    HorizontalAlignment = Enum.HorizontalAlignment.Right,
+    VerticalAlignment = Enum.VerticalAlignment.Bottom,
+    Padding = UDim.new(0, 4),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Parent = MobileBindPanel
+})
+
+local function MakeBindButton(text, color, order, callback)
+    local btn = Create("TextButton", {
+        Size = UDim2.new(0, 60, 0, 34),
+        BackgroundColor3 = color,
+        Text = text,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        AutoButtonColor = false,
+        LayoutOrder = order,
+        ZIndex = 401,
+        Parent = MobileBindPanel
+    })
+    Corner(btn, 8)
+    Stroke(btn, Theme.Stroke, 1)
+
+    btn.MouseEnter:Connect(function()
+        Tween(btn, 0.12, { BackgroundColor3 = Theme.ElementHov })
+    end)
+    btn.MouseLeave:Connect(function()
+        Tween(btn, 0.12, { BackgroundColor3 = color })
+    end)
+
+    AddClick(btn, function()
+        Click()
+        SafeCall(callback)
+    end)
+
+    return btn
+end
+
+MakeBindButton("FLY", Theme.Element, 1, function()
+    CFG.Cheats.FlyEnabled = not CFG.Cheats.FlyEnabled
+    Notify("Fly: " .. (CFG.Cheats.FlyEnabled and "ON" or "OFF"), CFG.Cheats.FlyEnabled and Theme.Success or Theme.Danger)
+end)
+
+MakeBindButton("SPEED", Theme.Element, 2, function()
+    CFG.Cheats.SpeedEnabled = not CFG.Cheats.SpeedEnabled
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = CFG.Cheats.SpeedEnabled and CFG.Cheats.WalkSpeed or 16 end
+    Notify("Speed: " .. (CFG.Cheats.SpeedEnabled and "ON" or "OFF"), CFG.Cheats.SpeedEnabled and Theme.Success or Theme.Danger)
+end)
+
+MakeBindButton("NOCLIP", Theme.Element, 3, function()
+    CFG.Cheats.NoclipEnabled = not CFG.Cheats.NoclipEnabled
+    Notify("Noclip: " .. (CFG.Cheats.NoclipEnabled and "ON" or "OFF"), CFG.Cheats.NoclipEnabled and Theme.Success or Theme.Danger)
+end)
+
+MakeBindButton("BLINK", Theme.Element, 4, function()
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, -CFG.Cheats.BlinkDistance)
+        Notify("Blink!", Theme.Success)
+    end
+end)
+
+MakeBindButton("TP", Theme.Element, 5, function()
+    local mouse = LocalPlayer:GetMouse()
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and mouse.Hit then
+        hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+        Notify("TP", Theme.Success)
+    end
+end)
+
+MakeBindButton("FLING", Color3.fromRGB(180, 55, 55), 6, function()
+    local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myHrp then return end
+    local closest, bestDist = nil, math.huge
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local d = (hrp.Position - myHrp.Position).Magnitude
+                if d < bestDist then bestDist = d; closest = plr end
+            end
+        end
+    end
+    if closest then
+        local tHrp = closest.Character:FindFirstChild("HumanoidRootPart")
+        if tHrp then
+            myHrp.Size = Vector3.new(0.05, 0.05, 0.05)
+            myHrp.CFrame = tHrp.CFrame
+            local spin = Instance.new("BodyAngularVelocity")
+            spin.AngularVelocity = Vector3.new(0, 100000, 0)
+            spin.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            spin.Parent = myHrp
+            task.delay(0.5, function()
+                if spin.Parent then spin:Destroy() end
+                if myHrp.Parent then myHrp.Size = Vector3.new(2, 2, 1) end
+            end)
+            Notify("Fling: " .. closest.Name, Theme.Success)
+        end
+    else
+        Notify("Нет цели", Theme.Danger)
+    end
+end)
+
+MakeBindButton("GOD", Theme.Element, 7, function()
+    CFG.Cheats.GodMode = not CFG.Cheats.GodMode
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.MaxHealth = CFG.Cheats.GodMode and math.huge or 100 end
+    Notify("GodMode: " .. (CFG.Cheats.GodMode and "ON" or "OFF"), CFG.Cheats.GodMode and Theme.Success or Theme.Danger)
+end)
+
+MakeBindButton("FREEZE", Theme.Element, 8, function()
+    CFG.Cheats.FreezePlayer = not CFG.Cheats.FreezePlayer
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        if CFG.Cheats.FreezePlayer then
+            local anchor = Create("Part", {
+                Name="ZenithFreeze", Size=Vector3.new(1,1,1), Transparency=1,
+                CanCollide=false, Anchored=true, CanQuery=false,
+                CFrame=hrp.CFrame, Parent=workspace
+            })
+            Create("WeldConstraint", {Part0=hrp, Part1=anchor, Parent=hrp})
+        else
+            local anchor = workspace:FindFirstChild("ZenithFreeze")
+            if anchor then anchor:Destroy() end
+        end
+        Notify("Freeze: " .. (CFG.Cheats.FreezePlayer and "ON" or "OFF"), Theme.Success)
     end
 end)
 
